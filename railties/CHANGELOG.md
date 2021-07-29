@@ -1,3 +1,12 @@
+*   Extend `content_security_policy_report_only` configuration to support
+    blocks, similar to `content_security_policy`.
+
+    The changes are backwards compatible.
+
+    Fixes #40452
+
+    *Shaun Russell*
+    
 *   Show Rake task description if command is run with -h.
 
     Adding `-h` (or `--help`) to a Rails command that's a Rake task, now returns

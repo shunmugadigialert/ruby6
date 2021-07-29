@@ -1,4 +1,18 @@
+*   Extend `content_security_policy_report_only` to
+    support blocks, similar to `content_security_policy`.
+
+    This allows for requests to have both Content-Security-Policy and
+    Content-Security-Policy-Report-Only headers.
+
+    The changes are backwards compatible.
+
+    Fixes #40452
+
+    *Shaun Russell*
+
 *   Add `Middleware#delete!` to delete middleware or raise if not found.
+
+*   Add `Middleware#remove` to delete middleware or raise if not found.
 
     `Middleware#delete!` works just like `Middleware#delete` but will
     raise an error if the middleware isn't found.

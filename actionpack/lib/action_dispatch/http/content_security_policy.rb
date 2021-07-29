@@ -20,17 +20,29 @@ module ActionDispatch # :nodoc:
         return response unless html_response?(headers)
         return response if policy_present?(headers)
 
-        if policy = request.content_security_policy
+        policy = request.content_security_policy
+        report_only_policy = determine_report_only_policy(request)
+
+        if policy || report_only_policy
           nonce = request.content_security_policy_nonce
           nonce_directives = request.content_security_policy_nonce_directives
           context = request.controller_instance || request
-          headers[header_name(request)] = policy.build(context, nonce, nonce_directives)
+
+          headers[header_name(request)] = policy.build(context, nonce, nonce_directives) if policy
+
+          headers[POLICY_REPORT_ONLY] = report_only_policy.build(context, nonce, nonce_directives) if report_only_policy
         end
 
         response
       end
 
       private
+        def determine_report_only_policy(request)
+          return if request.content_security_policy_report_only == true
+
+          request.content_security_policy_report_only
+        end
+
         def html_response?(headers)
           if content_type = headers[CONTENT_TYPE]
             /html/.match?(content_type)
@@ -38,7 +50,7 @@ module ActionDispatch # :nodoc:
         end
 
         def header_name(request)
-          if request.content_security_policy_report_only
+          if request.content_security_policy_report_only == true
             POLICY_REPORT_ONLY
           else
             POLICY
@@ -69,8 +81,8 @@ module ActionDispatch # :nodoc:
         get_header(POLICY_REPORT_ONLY)
       end
 
-      def content_security_policy_report_only=(value)
-        set_header(POLICY_REPORT_ONLY, value)
+      def content_security_policy_report_only=(policy)
+        set_header(POLICY_REPORT_ONLY, policy)
       end
 
       def content_security_policy_nonce_generator
