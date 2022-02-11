@@ -6,7 +6,7 @@ require "models/post"
 require "models/subscriber"
 
 class EachTest < ActiveRecord::TestCase
-  fixtures :posts, :subscribers
+  fixtures :comments, :posts, :subscribers
 
   def setup
     @posts = Post.order("id asc")
@@ -623,6 +623,53 @@ class EachTest < ActiveRecord::TestCase
       end
 
       assert_equal @total, total
+    end
+
+    test "in_batches should not have a limit on the relation when load is #{load}" do
+      # MySQL is the only one with direct values and that eliminates the subquery when
+      # the limit is removed.
+      skip unless current_adapter?(:Mysql2Adapter)
+
+      assert_equal 6, Post.no_comments.count
+
+      batch_size = 3
+      limit      = 5
+
+      post_id = Post.connection.quote_table_name("posts.id")
+
+      sql_patterns = [
+        /\ADELETE .* WHERE .* AND #{Regexp.escape(post_id)} IN \(3, 6, 8\)\z/,
+        /\ADELETE .* WHERE .* AND #{Regexp.escape(post_id)} IN \(9, 10\)\z/,
+      ]
+
+      assert_queries(4) do
+        assert_sql(*sql_patterns) do
+          Post.no_comments.limit(limit).in_batches(of: batch_size, load: load).each_with_index do |batch, index|
+            assert_equal 3 - index, batch.delete_all
+          end
+        end
+      end
+    end
+
+    test "in_batches should not have an offset on the relation when load is #{load}" do
+      # MySQL is the only one with direct values and that eliminates the subquery when
+      # the offset is removed.
+      skip unless current_adapter?(:Mysql2Adapter)
+
+      assert_equal 6, Post.no_comments.count
+
+      batch_size = 3
+      offset     = 2
+
+      post_id = Post.connection.quote_table_name("posts.id")
+
+      assert_queries(3) do
+        assert_sql(/\AUPDATE .* WHERE .* AND #{Regexp.escape(post_id)} IN \(8, 9, 10\)\z/) do
+          Post.no_comments.offset(offset).in_batches(of: batch_size, load: load) do |batch|
+            assert_equal 3, batch.update_all(legacy_comments_count: 0)
+          end
+        end
+      end
     end
   end
 

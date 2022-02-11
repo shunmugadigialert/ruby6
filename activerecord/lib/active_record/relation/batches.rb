@@ -227,14 +227,17 @@ module ActiveRecord
       batch_relation = relation
 
       loop do
+        # We remove any limit or offset on the yielded relation because we've already
+        # respected it if set. Leaving it can uselessly trigger a subquery with some
+        # databases and could cause incorrect query executions.
         if load
           records = batch_relation.records
           ids = records.map(&:id)
-          yielded_relation = where(primary_key => ids)
+          yielded_relation = where(primary_key => ids).limit(nil).offset(nil)
           yielded_relation.load_records(records)
         else
           ids = batch_relation.pluck(primary_key)
-          yielded_relation = where(primary_key => ids)
+          yielded_relation = where(primary_key => ids).limit(nil).offset(nil)
         end
 
         break if ids.empty?
