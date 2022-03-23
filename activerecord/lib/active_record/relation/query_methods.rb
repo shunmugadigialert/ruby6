@@ -468,6 +468,7 @@ module ActiveRecord
         .order!(connection.field_ordered_value(arel_column, values))
         .where!(arel_column.in(values))
     end
+
     # Replaces any existing order defined on the relation with the specified order.
     #
     #   User.order('email DESC').reorder('id ASC') # generated SQL has 'ORDER BY id ASC'
