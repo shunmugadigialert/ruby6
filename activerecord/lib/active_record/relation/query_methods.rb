@@ -456,18 +456,18 @@ module ActiveRecord
       references = column_references([column])
       self.references_values |= references unless references.empty?
 
-      if type_for_attribute(column).is_a?(ActiveRecord::Enum::EnumType)
-        values = values.map { |value| type_caster.type_cast_for_database(column, value) }
-      end
-
       arel_column = column.is_a?(Symbol) ? order_column(column.to_s) : column
-      where_condition = column.is_a?(Symbol) ? { column => values } : arel_column.in(values)
+
+      if caster = arel_column.respond_to?(:type_caster) && arel_column.type_caster
+        values = values.map do |value|
+          caster.serialize(value) if caster.serializable?(value)
+        end.compact
+      end
 
       spawn
         .order!(connection.field_ordered_value(arel_column, values))
-        .where!(where_condition)
+        .where!(arel_column.in(values))
     end
-
     # Replaces any existing order defined on the relation with the specified order.
     #
     #   User.order('email DESC').reorder('id ASC') # generated SQL has 'ORDER BY id ASC'
