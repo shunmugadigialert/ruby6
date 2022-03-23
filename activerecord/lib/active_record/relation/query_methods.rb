@@ -459,9 +459,9 @@ module ActiveRecord
       arel_column = column.is_a?(Symbol) ? order_column(column.to_s) : column
 
       if caster = arel_column.respond_to?(:type_caster) && arel_column.type_caster
-        values = values.map do |value|
+        values = values.filter_map do |value|
           caster.serialize(value) if caster.serializable?(value)
-        end.compact
+        end
       end
 
       spawn
