@@ -23,7 +23,7 @@ module ActiveRecord
       #   # For the Post with id #1, reset the comments_count
       #   Post.reset_counters(1, :comments)
       #
-      #   # For the Post with id #1 and #2, reset the comments_count
+      #   # For Posts with ids #1 and #2, reset the comments_count
       #   Post.reset_counters([1, 2], :comments)
       #
       #   # Like above, but also touch the +updated_at+ and/or +updated_on+
@@ -55,8 +55,8 @@ module ActiveRecord
           counts =
             unscoped
               .joins(counter_association)
-              .where(arel_table[primary_key].in(ids))
-              .group(arel_table[primary_key])
+              .where(primary_key => ids)
+              .group(primary_key)
               .count(:all)
 
           ids.each do |id|
