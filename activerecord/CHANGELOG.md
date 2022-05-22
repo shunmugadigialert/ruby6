@@ -60,6 +60,14 @@
 
     *Alex Ghiculescu*
 
+*   Allow to reset cache counters for multiple records.
+
+    ```
+    Aircraft.reset_counters([1, 2, 3], :wheels_count)
+    ```
+
+    *fatkodima*
+
 *   Remove `ActiveRecord.legacy_connection_handling`.
 
     *Eileen M. Uchitelle*
