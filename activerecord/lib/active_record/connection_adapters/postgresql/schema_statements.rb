@@ -87,8 +87,13 @@ module ActiveRecord
           scope = quoted_scope(table_name)
 
           result = query(<<~SQL, "SCHEMA")
-            SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid,
-                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment, d.indisvalid
+            SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid),
+                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment, d.indisvalid,
+                            ARRAY(
+                              SELECT pg_get_indexdef(d.indexrelid, k + 1, true)
+                              FROM generate_subscripts(d.indkey, 1) AS k
+                              ORDER BY k
+                            ) AS columns
             FROM pg_class t
             INNER JOIN pg_index d ON t.oid = d.indrelid
             INNER JOIN pg_class i ON d.indexrelid = i.oid
@@ -105,9 +110,9 @@ module ActiveRecord
             unique = row[1]
             indkey = row[2].split(" ").map(&:to_i)
             inddef = row[3]
-            oid = row[4]
-            comment = row[5]
-            valid = row[6]
+            comment = row[4]
+            valid = row[5]
+            columns = row[6]
 
             using, expressions, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: WHERE (.+))?\z/m).flatten
 
@@ -117,12 +122,8 @@ module ActiveRecord
             if indkey.include?(0)
               columns = expressions
             else
-              columns = Hash[query(<<~SQL, "SCHEMA")].values_at(*indkey).compact
-                SELECT a.attnum, a.attname
-                FROM pg_attribute a
-                WHERE a.attrelid = #{oid}
-                AND a.attnum IN (#{indkey.join(",")})
-              SQL
+              decoder = PG::TextDecoder::Array.new
+              columns = decoder.decode(columns)
 
               # add info on sort order (only desc order is explicitly specified, asc is the default)
               # and non-default opclasses
