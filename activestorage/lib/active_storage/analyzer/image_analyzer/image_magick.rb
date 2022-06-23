@@ -1,22 +1,24 @@
 # frozen_string_literal: true
 
+begin
+  gem "mini_magick"
+rescue LoadError => error
+  raise error unless error.message.match?(/ruby-vips/)
+
+  ActiveSupport::Deprecation.warn <<~WARNING
+    Setting config.active_storage.variant_processor to :mini_magick without adding
+    mini_magick to the Gemfile is deprecated and will raise in Rails 7.2.
+
+    To fix this warning, set config.active_storage.variant_processor = nil
+  WARNING
+end
+
 module ActiveStorage
   # This analyzer relies on the third-party {MiniMagick}[https://github.com/minimagick/minimagick] gem. MiniMagick requires
   # the {ImageMagick}[http://www.imagemagick.org] system library.
   class Analyzer::ImageAnalyzer::ImageMagick < Analyzer::ImageAnalyzer
-    def self.accept?(blob)
-      super && ActiveStorage.variant_processor == :mini_magick
-    end
-
     private
       def read_image
-        begin
-          require "mini_magick"
-        rescue LoadError
-          logger.info "Skipping image analysis because the mini_magick gem isn't installed"
-          return {}
-        end
-
         download_blob_to_tempfile do |file|
           image = instrument("mini_magick") do
             MiniMagick::Image.new(file.path)

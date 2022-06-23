@@ -46,6 +46,8 @@ module ActiveStorage
   mattr_accessor :verifier
   mattr_accessor :variant_processor, default: :mini_magick
 
+  mattr_accessor :variant_transformer
+
   mattr_accessor :queues, default: {}
 
   mattr_accessor :previewers, default: []
@@ -369,5 +371,7 @@ module ActiveStorage
 
     autoload :Transformer
     autoload :ImageProcessingTransformer
+    autoload :Vips
+    autoload :ImageMagick
   end
 end
