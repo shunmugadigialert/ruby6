@@ -1097,6 +1097,14 @@ module ActiveRecord
         self
       end
 
+      %w(insert insert_all insert! insert_all! upsert upsert_all).each do |method|
+        class_eval <<~RUBY, __FILE__, __LINE__ + 1
+          def #{method}(...)
+            scope.#{method}(...).tap { reset }
+          end
+        RUBY
+      end
+
       def inspect # :nodoc:
         load_target if find_from_target?
         super
@@ -1108,7 +1116,7 @@ module ActiveRecord
       ].flat_map { |klass|
         klass.public_instance_methods(false)
       } - self.public_instance_methods(false) - [:select] + [
-        :scoping, :values, :insert, :insert_all, :insert!, :insert_all!, :upsert, :upsert_all, :load_async
+        :scoping, :values, :load_async
       ]
 
       delegate(*delegate_methods, to: :scope)

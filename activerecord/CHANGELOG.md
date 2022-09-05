@@ -1,3 +1,9 @@
+*   Reset relations after `insert_all`/`upsert_all`.
+
+    Bulk insert/upsert methods will now call `reset` if used on a relation, matching the behavior of `update_all`.
+
+    *Milo Winningham*
+
 *   Allow ActiveRecord::QueryMethods#select to receive hash values.
 
     Currently, `select` might receive only raw sql and symbols to define columns and aliases to select.
