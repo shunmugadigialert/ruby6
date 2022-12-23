@@ -1,3 +1,16 @@
+*   Support attaching `URI` instances
+
+    ```ruby
+    uri = URI("https://example.com/racecar.jpg")
+
+    user.avatar.attach uri
+
+    user.avatar.filename.to_s
+    # => "racecar.jpg"
+    ```
+
+    *Sean Doyle*
+
 ## Rails 7.1.0.beta1 (September 13, 2023) ##
 
 *   Disables the session in `ActiveStorage::Blobs::ProxyController`
