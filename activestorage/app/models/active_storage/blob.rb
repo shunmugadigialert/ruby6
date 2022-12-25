@@ -296,7 +296,7 @@ class ActiveStorage::Blob < ActiveStorage::Record
   end
 
   def mirror_later # :nodoc:
-    ActiveStorage::MirrorJob.perform_later(key, checksum: checksum) if service.respond_to?(:mirror)
+    ActiveStorage::MirrorJob.perform_later(key) if service.respond_to?(:mirror)
   end
 
   # Deletes the files on the service associated with the blob. This should only be done if the blob is going to be

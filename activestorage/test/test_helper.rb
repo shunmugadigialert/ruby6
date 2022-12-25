@@ -39,7 +39,9 @@ Rails.configuration.active_storage.service_configurations = SERVICE_CONFIGURATIO
   "disk_mirror_1" => { "service" => "Disk", "root" => Dir.mktmpdir("active_storage_tests_1") },
   "disk_mirror_2" => { "service" => "Disk", "root" => Dir.mktmpdir("active_storage_tests_2") },
   "disk_mirror_3" => { "service" => "Disk", "root" => Dir.mktmpdir("active_storage_tests_3") },
-  "mirror" => { "service" => "Mirror", "primary" => "local", "mirrors" => ["disk_mirror_1", "disk_mirror_2", "disk_mirror_3"] }
+  "disk_mirror_4" => { "service" => "Disk", "root" => Dir.mktmpdir("active_storage_tests_4") },
+  "mirror" => { "service" => "Mirror", "primary" => "local", "mirrors" => ["disk_mirror_1", "disk_mirror_2", "disk_mirror_3"] },
+  "mirror_2" => { "service" => "Mirror", "primary" => "local", "mirrors" => ["disk_mirror_4"] }
 ).deep_stringify_keys
 
 Rails.configuration.active_storage.service = "local"
@@ -172,6 +174,7 @@ class User < ActiveRecord::Base
   validates :name, presence: true
 
   has_one_attached :avatar
+  has_one_attached :avatar_with_service, service: :mirror_2
   has_one_attached :cover_photo, dependent: false, service: :local
   has_one_attached :avatar_with_variants do |attachable|
     attachable.variant :thumb, resize_to_limit: [100, 100]
