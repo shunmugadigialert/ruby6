@@ -1,3 +1,7 @@
+*   Add support for nested middleware stacks
+
+    *Nick Hengeveld*
+
 *   `config.action_dispatch.cookies_serializer` now accepts `:message_pack` and
     `:message_pack_allow_marshal` as serializers. These serializers require the
     [`msgpack` gem](https://rubygems.org/gems/msgpack) (>= 1.7.0).
