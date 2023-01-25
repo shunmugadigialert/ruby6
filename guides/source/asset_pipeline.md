@@ -1113,32 +1113,6 @@ This is a handy option if you are updating an older project that didn't use the
 asset pipeline and already uses this path or you wish to use this path for
 a new resource.
 
-### X-Sendfile Headers
-
-The X-Sendfile header is a directive to the web server to ignore the response
-from the application, and instead serve a specified file from disk. This option
-is off by default, but can be enabled if your server supports it. When enabled,
-this passes responsibility for serving the file to the web server, which is
-faster. Have a look at [send_file](https://api.rubyonrails.org/classes/ActionController/DataStreaming.html#method-i-send_file)
-on how to use this feature.
-
-Apache and NGINX support this option, which can be enabled in
-`config/environments/production.rb`:
-
-```ruby
-# config.action_dispatch.x_sendfile_header = "X-Sendfile" # for Apache
-# config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect' # for NGINX
-```
-
-WARNING: If you are upgrading an existing application and intend to use this
-option, take care to paste this configuration option only into `production.rb`
-and any other environments you define with production behavior (not
-`application.rb`).
-
-TIP: For further details have a look at the docs of your production web server:
-- [Apache](https://tn123.org/mod_xsendfile/)
-- [NGINX](https://www.nginx.com/resources/wiki/start/topics/examples/xsendfile/)
-
 Assets Cache Store
 ------------------
 
