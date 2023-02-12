@@ -45,7 +45,7 @@ module ActionMailer
         self.preview_paths |= options[:preview_paths]
 
         if delivery_job = options.delete(:delivery_job)
-          self.delivery_job = delivery_job.constantize
+          self.delivery_job = delivery_job
         end
 
         if options.smtp_settings
