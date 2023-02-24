@@ -1,3 +1,15 @@
+*   `ActiveRecord::Calculations.pluck_as_hash`
+    Similar to `pluck` but returns an Array of hashes which hold the specified columns as keys
+
+    ````ruby
+    Person.pluck_as_hash(:name, :age, :id)
+    # => [{name: "Hans", age: "22", id: "1"},
+    #    {name: "Alicia", age: "19", id: "3"},
+    #    {name: "Claudia", age: "22", id: "4"},
+    ````
+
+    *Tim Kretschmer*
+
 *   YAML columns use `YAML.safe_dump` is available.
 
     As of `psych 5.1.0`, `YAML.safe_dump` can now apply the same permitted
