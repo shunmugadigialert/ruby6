@@ -213,13 +213,30 @@ module ActiveRecord
         end
 
         # Creates a schema for the given schema name.
-        def create_schema(schema_name)
-          execute "CREATE SCHEMA #{quote_schema_name(schema_name)}"
+        #
+        # [<tt>:force</tt>]
+        #   Set to +:cascade+ to drop dependent objects as well.
+        #   Defaults to false.
+        # [<tt>:if_not_exists</tt>]
+        #   Set to true to avoid raising an error when the schema already exists.
+        #   Defaults to false.
+        def create_schema(schema_name, if_not_exists: false, force: false)
+          if force
+            drop_schema(schema_name, if_exists: true, force: force)
+          end
+          execute "CREATE SCHEMA#{' IF NOT EXISTS' if if_not_exists} #{quote_schema_name(schema_name)}"
         end
 
         # Drops the schema for the given schema name.
+        #
+        # [<tt>:force</tt>]
+        #   Set to +:cascade+ to drop dependent objects as well.
+        #   Defaults to false.
+        # [<tt>:if_exists</tt>]
+        #   Set to +true+ to only drop the schema if it exists.
+        #   Defaults to false.
         def drop_schema(schema_name, **options)
-          execute "DROP SCHEMA#{' IF EXISTS' if options[:if_exists]} #{quote_schema_name(schema_name)} CASCADE"
+          execute "DROP SCHEMA#{' IF EXISTS' if options[:if_exists]} #{quote_schema_name(schema_name)}#{' CASCADE' if ActiveRecord.postgresql_drop_schema_cascade || options[:force] == :cascade}"
         end
 
         # Sets the schema search path to a string of comma-separated schema names.
