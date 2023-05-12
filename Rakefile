@@ -50,6 +50,10 @@ else
   Rails::API::StableTask.new("rdoc")
 end
 
+Rails::API::NameListTask.new("namelist") do |name_list_task|
+  name_list_task.rdoc_dir = "doc/names"
+end
+
 desc "Bump all versions to match RAILS_VERSION"
 task update_versions: "all:update_versions"
 
