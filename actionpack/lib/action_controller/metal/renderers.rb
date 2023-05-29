@@ -2,6 +2,8 @@
 
 require "set"
 
+require "active_support/deprecation/constant_accessor"
+
 module ActionController
   # See Renderers.add
   def self.add_renderer(key, &block)
@@ -13,12 +15,13 @@ module ActionController
     Renderers.remove(key)
   end
 
-  # See <tt>Responder#api_behavior</tt>
-  class MissingRenderer < LoadError
+  include ActiveSupport::Deprecation::DeprecatedConstantAccessor
+  class MissingRenderer < LoadError # :nodoc:
     def initialize(format)
       super "No renderer defined for format: #{format}"
     end
   end
+  deprecate_constant "MissingRenderer", nil, message: "ActionController::MissingRenderer is deprecated and will be removed from Rails 7.2."
 
   module Renderers
     extend ActiveSupport::Concern

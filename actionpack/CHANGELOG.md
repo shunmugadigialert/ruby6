@@ -1,3 +1,7 @@
+*   Deprecate `ActionController::MissingRenderer`
+
+    *zzak*
+
 *   Change `action_dispatch.show_exceptions` to one of `:all`, `:rescuable`, or
     `:none`. `:all` and `:none` behave the same as the previous `true` and
     `false` respectively. The new `:rescuable` option will only show exceptions
