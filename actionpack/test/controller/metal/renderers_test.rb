@@ -48,3 +48,11 @@ class RenderersMetalTest < ActionController::TestCase
     assert_equal "text/plain", @response.media_type
   end
 end
+
+class MissingRendererTest < ActionController::TestCase
+  test "MissingRenderer is deprecated" do
+    assert_deprecated do
+      ActionController::MissingRenderer.new("blah")
+    end
+  end
+end
