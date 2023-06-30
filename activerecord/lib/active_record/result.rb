@@ -37,6 +37,7 @@ module ActiveRecord
     include Enumerable
 
     attr_reader :columns, :rows, :column_types
+    attr_reader :affected_rows # :nodoc:
 
     def self.empty(async: false) # :nodoc:
       if async
@@ -46,11 +47,12 @@ module ActiveRecord
       end
     end
 
-    def initialize(columns, rows, column_types = {})
+    def initialize(columns, rows, column_types = {}, affected_rows = nil)
       @columns      = columns
       @rows         = rows
       @hash_rows    = nil
       @column_types = column_types
+      @affected_rows = affected_rows
     end
 
     # Returns true if this result set includes the column named +name+

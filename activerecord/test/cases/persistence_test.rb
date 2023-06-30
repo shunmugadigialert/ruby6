@@ -43,18 +43,43 @@ class PersistenceTest < ActiveRecord::TestCase
     assert_not_nil order_id
   end
 
-  def test_fills_auto_populated_columns_on_creation
-    record_with_defaults = Default.create
-    assert_not_nil record_with_defaults.id
-    assert_equal "Ruby on Rails", record_with_defaults.ruby_on_rails
-    assert_not_nil record_with_defaults.virtual_stored_number
-    assert_not_nil record_with_defaults.rand_number
-    assert_not_nil record_with_defaults.modified_date
-    assert_not_nil record_with_defaults.modified_date_function
-    assert_not_nil record_with_defaults.modified_time
-    assert_not_nil record_with_defaults.modified_time_without_precision
-    assert_not_nil record_with_defaults.modified_time_function
-  end if current_adapter?(:PostgreSQLAdapter)
+  if current_adapter?(:PostgreSQLAdapter)
+    def test_fills_auto_populated_columns_on_update
+      record_with_defaults = Default.create
+
+      record_with_defaults.update!(rand_number: 1000)
+      assert_equal 1001,  record_with_defaults.rand_number_plus_one
+    end
+
+    def test_auto_populates_columns_on_update_with_a_single_query
+      record_with_defaults = Default.create
+
+      assert_queries(1) do
+        record_with_defaults.update!(rand_number: 1000)
+      end
+    end
+
+    def test_returning_columns_on_update_does_not_include_id
+      record_with_defaults = Default.create
+
+      sql = capture_sql { record_with_defaults.update!(rand_number: 1000) }.first
+
+      assert_equal false, (/RETURNING.*id/).match?(sql)
+    end
+
+    def test_fills_auto_populated_columns_on_creation
+      record_with_defaults = Default.create
+      assert_not_nil record_with_defaults.id
+      assert_equal "Ruby on Rails", record_with_defaults.ruby_on_rails
+      assert_not_nil record_with_defaults.rand_number_plus_one
+      assert_not_nil record_with_defaults.rand_number
+      assert_not_nil record_with_defaults.modified_date
+      assert_not_nil record_with_defaults.modified_date_function
+      assert_not_nil record_with_defaults.modified_time
+      assert_not_nil record_with_defaults.modified_time_without_precision
+      assert_not_nil record_with_defaults.modified_time_function
+    end
+  end
 
   def test_update_many
     topic_data = { 1 => { "content" => "1 updated" }, 2 => { "content" => "2 updated" } }

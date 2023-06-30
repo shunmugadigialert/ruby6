@@ -163,7 +163,8 @@ module ActiveRecord
       # Executes update +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is logged along with
       # the executed +sql+ statement.
-      def exec_update(sql, name = nil, binds = [])
+      def exec_update(sql, name = nil, binds = [], returning: nil)
+        sql, binds = sql_for_update(sql, binds, returning)
         internal_exec_query(sql, name, binds)
       end
 
@@ -195,9 +196,20 @@ module ActiveRecord
       alias create insert
 
       # Executes the update statement and returns the number of rows affected.
-      def update(arel, name = nil, binds = [])
+      #
+      # Some adapters support the `returning` keyword argument which allows defining the return value of the method:
+      # `nil` is the default value and maintains default behavior. If an array of column names is passed then
+      # ActiveRecord::Result is returned from the method. The `rows` attribute of this returned object will
+      # contain the values of the specified columns for the updated row.
+      def update(arel, name = nil, binds = [], returning: nil)
         sql, binds = to_sql_and_binds(arel, binds)
-        exec_update(sql, name, binds)
+        result = exec_update(sql, name, binds, returning: returning)
+
+        if result.is_a?(ActiveRecord::Result) && returning.nil?
+          result.affected_rows
+        else
+          result
+        end
       end
 
       # Executes the delete statement and returns the number of rows affected.
@@ -634,6 +646,10 @@ module ActiveRecord
         end
 
         def sql_for_insert(sql, _pk, binds, _returning)
+          [sql, binds]
+        end
+
+        def sql_for_update(sql, binds, _returning)
           [sql, binds]
         end
 
