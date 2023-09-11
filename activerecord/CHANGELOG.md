@@ -1,3 +1,7 @@
+*   Introduce `alias_association` feature to allow defining an alias to an existing association.
+
+    *Nikita Vasilevsky*
+
 *   Support `RETURNING` clause for MariaDB
 
     *fatkodima*, *Nikolay Kondratyev*
