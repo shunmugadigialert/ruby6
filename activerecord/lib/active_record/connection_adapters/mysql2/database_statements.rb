@@ -38,7 +38,7 @@ module ActiveRecord
           end
         end
 
-        def exec_delete(sql, name = nil, binds = []) # :nodoc:
+        def _exec_statement(sql, name = nil, binds = []) # :nodoc:
           if without_prepared_statement?(binds)
             with_raw_connection do |conn|
               @affected_rows_before_warnings = nil
@@ -48,7 +48,11 @@ module ActiveRecord
             exec_stmt_and_free(sql, name, binds) { |stmt| stmt.affected_rows }
           end
         end
-        alias :exec_update :exec_delete
+        alias :exec_delete :_exec_statement # :nodoc:
+
+        def exec_update(sql, name = nil, binds = [], returning: nil) # :nodoc:
+          _exec_statement(sql, name, binds)
+        end
 
         private
           def sync_timezone_changes(raw_connection)

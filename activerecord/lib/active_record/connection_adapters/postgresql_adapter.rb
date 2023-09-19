@@ -286,7 +286,11 @@ module ActiveRecord
       end
 
       def return_value_after_insert?(column) # :nodoc:
-        column.auto_populated?
+        column.auto_populated_on_insert?
+      end
+
+      def return_value_after_update?(column) # :nodoc:
+        column.auto_populated_on_update?
       end
 
       class StatementPool < ConnectionAdapters::StatementPool # :nodoc:

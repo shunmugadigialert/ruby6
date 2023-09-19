@@ -7,6 +7,7 @@ require "models/parrot"
 require "models/person"   # For optimistic locking
 require "models/aircraft"
 require "models/numeric_data"
+require "models/default"
 
 class DirtyTest < ActiveRecord::TestCase
   include InTimeZone
@@ -981,6 +982,13 @@ class DirtyTest < ActiveRecord::TestCase
     assert parrot.breed_changed?(from: :african, to: :australian)
     assert parrot.breed_changed?(from: 0, to: 1)
   end
+
+  def test_virtual_column_loaded_change_on_update
+    record_with_defaults = Default.create(rand_number: 10)
+    record_with_defaults.update!(rand_number: 20)
+
+    assert_equal [11, 21], record_with_defaults.previous_changes[:rand_number_plus_one]
+  end if current_adapter?(:PostgreSQLAdapter)
 
   private
     def with_partial_writes(klass, on = true)

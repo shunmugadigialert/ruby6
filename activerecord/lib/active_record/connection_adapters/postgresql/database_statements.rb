@@ -66,14 +66,19 @@ module ActiveRecord
               fmod  = result.fmod i
               types[fname] = types[i] = get_oid_type(ftype, fmod, fname)
             end
-            build_result(columns: fields, rows: result.values, column_types: types)
+            build_result(columns: fields, rows: result.values, column_types: types, affected_rows: result.cmd_tuples)
           end
         end
 
         def exec_delete(sql, name = nil, binds = []) # :nodoc:
           execute_and_clear(sql, name, binds) { |result| result.cmd_tuples }
         end
-        alias :exec_update :exec_delete
+
+        def exec_update(sql, name = nil, binds = [], returning: nil) # :nodoc:
+          sql, binds = sql_for_update(sql, binds, returning)
+
+          internal_exec_query(sql, name, binds)
+        end
 
         def sql_for_insert(sql, pk, binds, returning) # :nodoc:
           if pk.nil?
@@ -90,6 +95,16 @@ module ActiveRecord
           super
         end
         private :sql_for_insert
+
+        def sql_for_update(sql, binds, returning_columns) # :nodoc:
+          return super unless returning_columns&.any?
+
+          returning_columns_statement = returning_columns.map { |c| quote_column_name(c) }.join(", ")
+          sql = "#{sql} RETURNING #{returning_columns_statement}"
+
+          super
+        end
+        private :sql_for_update
 
         def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning: nil) # :nodoc:
           if use_insert_returning? || pk == false

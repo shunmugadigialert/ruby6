@@ -583,6 +583,10 @@ module ActiveRecord
         column.auto_incremented_by_db?
       end
 
+      def return_value_after_update?(_column)
+        false
+      end
+
       def async_enabled? # :nodoc:
         supports_concurrent_connections? &&
           !ActiveRecord.async_query_executor.nil? && !pool.async_executor.nil?
@@ -1203,8 +1207,8 @@ module ActiveRecord
         #
         # This is an internal hook to make possible connection adapters to build
         # custom result objects with connection-specific data.
-        def build_result(columns:, rows:, column_types: {})
-          ActiveRecord::Result.new(columns, rows, column_types)
+        def build_result(columns:, rows:, column_types: {}, affected_rows: nil)
+          ActiveRecord::Result.new(columns, rows, column_types, affected_rows)
         end
 
         # Perform any necessary initialization upon the newly-established
