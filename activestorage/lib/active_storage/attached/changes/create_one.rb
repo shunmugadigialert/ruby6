@@ -80,6 +80,16 @@ module ActiveStorage
               service_name: attachment_service_name
             ).symbolize_keys
           )
+        when URI
+          filename = File.basename(attachable.path)
+          io = attachable.open
+
+          ActiveStorage::Blob.create_and_upload!(
+            io: io,
+            filename: filename,
+            record: record,
+            service_name: attachment_service_name
+          )
         when String
           ActiveStorage::Blob.find_signed!(attachable, record: record)
         else
