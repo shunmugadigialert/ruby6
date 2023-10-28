@@ -251,6 +251,10 @@ module ActiveRecord
         true
       end
 
+      def supports_uuid?
+        true
+      end
+
       def supports_comments?
         true
       end
