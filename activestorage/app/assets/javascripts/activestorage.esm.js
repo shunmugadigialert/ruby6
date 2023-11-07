@@ -562,7 +562,10 @@ class BlobRecord {
     }
   }
   requestDidError(event) {
-    this.callback(`Error creating Blob for "${this.file.name}". Status: ${this.status}`);
+    this.callback({
+      xhr: this.xhr,
+      message: `Error creating Blob for "${this.file.name}". Status: ${this.status}`
+    });
   }
   toJSON() {
     const result = {};
@@ -600,7 +603,10 @@ class BlobUpload {
     }
   }
   requestDidError(event) {
-    this.callback(`Error storing "${this.file.name}". Status: ${this.xhr.status}`);
+    this.callback({
+      xhr: this.xhr,
+      message: `Error storing "${this.file.name}". Status: ${this.xhr.status}`
+    });
   }
 }
 
@@ -691,7 +697,8 @@ class DirectUploadController {
   }
   dispatchError(error) {
     const event = this.dispatch("error", {
-      error: error
+      error: error.message,
+      xhr: error.xhr
     });
     if (!event.defaultPrevented) {
       alert(error);
