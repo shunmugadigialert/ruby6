@@ -167,21 +167,6 @@ This will generate the guides in an *output* directory.
 
 NOTE: The Redcarpet Gem doesn't work with JRuby.
 
-Translation efforts we know about (various versions):
-
-* **Italian**: [https://github.com/rixlabs/docrails](https://github.com/rixlabs/docrails)
-* **Spanish**: [https://github.com/latinadeveloper/railsguides.es](https://github.com/latinadeveloper/railsguides.es)
-* **Polish**: [https://github.com/apohllo/docrails](https://github.com/apohllo/docrails)
-* **French** : [https://github.com/railsfrance/docrails](https://github.com/railsfrance/docrails)
-* **Czech** : [https://github.com/rubyonrails-cz/docrails/tree/czech](https://github.com/rubyonrails-cz/docrails/tree/czech)
-* **Turkish** : [https://github.com/ujk/docrails](https://github.com/ujk/docrails)
-* **Korean** : [https://github.com/rorlakr/rails-guides](https://github.com/rorlakr/rails-guides)
-* **Simplified Chinese** : [https://github.com/ruby-china/guides](https://github.com/ruby-china/guides)
-* **Traditional Chinese** : [https://github.com/docrails-tw/guides](https://github.com/docrails-tw/guides)
-* **Russian** : [https://github.com/morsbox/rusrails](https://github.com/morsbox/rusrails)
-* **Japanese** : [https://github.com/yasslab/railsguides.jp](https://github.com/yasslab/railsguides.jp)
-* **Brazilian Portuguese** : [https://github.com/campuscode/rails-guides-pt-BR](https://github.com/campuscode/rails-guides-pt-BR)
-
 Contributing to the Rails Code
 ------------------------------
 
@@ -495,6 +480,12 @@ You can invoke `test_jdbcmysql`, `test_jdbcsqlite3` or `test_jdbcpostgresql` als
 
 To use an external debugger (pry, byebug, etc), install the debugger and use it as normal.  If debugger issues occur, run tests in serial by setting `PARALLEL_WORKERS=1` or run a single test with `-n test_long_test_name`.
 
+If running tests against generators you will need to set `RAILS_LOG_TO_STDOUT=true` in order for debugging tools to work.
+
+```sh
+RAILS_LOG_TO_STDOUT=true ./bin/test test/generators/actions_test.rb
+```
+
 ### Warnings
 
 The test suite runs with warnings enabled. Ideally, Ruby on Rails should issue no warnings, but there may be a few, as well as some from third-party libraries. Please ignore (or fix!) them, if any, and submit patches that do not issue new warnings.
@@ -533,9 +524,6 @@ A CHANGELOG entry should summarize what was changed and should end with the auth
 
     *Your Name*
 ```
-
-Your name can be added directly after the last word if there are no code
-examples or multiple paragraphs. Otherwise, it's best to make a new paragraph.
 
 ### Breaking Changes
 
@@ -600,11 +588,11 @@ To set the new framework default, set the new value in
 def load_defaults(target_version)
   case target_version.to_s
   when "7.1"
-    ...
+    # ...
     if respond_to?(:active_job)
       active_job.existing_behavior = false
     end
-    ...
+    # ...
   end
 end
 ```
@@ -614,7 +602,7 @@ To ease the upgrade it's required to add the new default to the
 value:
 
 ```ruby
-# new_framework_defaults_7_1.rb.tt
+# new_framework_defaults_7_2.rb.tt
 
 # Rails.application.config.active_job.existing_behavior = false
 ```
@@ -776,8 +764,9 @@ a pull request. Don't despair! Sometimes it's quick; sometimes it's slow. Such
 is the open source life.
 
 If it's been over a week, and you haven't heard anything, you might want to try
-and nudge things along. You can use the [rubyonrails-core discussion board](https://discuss.rubyonrails.org/c/rubyonrails-core) for this. You can also
-leave another comment on the pull request.
+and nudge things along. You can use the *contributions* channel in the [Ruby on Rails Discord server](https://discord.gg/d8N68BCw49),
+or the [rubyonrails-core discussion board](https://discuss.rubyonrails.org/c/rubyonrails-core) for this.
+You can also leave another comment on the pull request.
 
 While you're waiting for feedback on your pull request, open up a few other
 pull requests and give someone else some! They'll appreciate it in

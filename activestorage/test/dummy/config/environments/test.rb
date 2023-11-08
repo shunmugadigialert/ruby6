@@ -18,7 +18,6 @@ Rails.application.configure do
   config.eager_load = ENV["CI"].present?
 
   # Configure public file server for tests with Cache-Control for performance.
-  config.public_file_server.enabled = true
   config.public_file_server.headers = {
     "Cache-Control" => "public, max-age=#{1.hour.to_i}"
   }
@@ -45,7 +44,7 @@ Rails.application.configure do
   end
   # Azure service tests are currently failing on the main branch.
   # We temporarily disable them while we get things working again.
-  if ENV["CI"]
+  if ENV["BUILDKITE"]
     SERVICE_CONFIGURATIONS.delete(:azure)
     SERVICE_CONFIGURATIONS.delete(:azure_public)
   end

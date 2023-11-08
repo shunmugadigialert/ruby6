@@ -21,19 +21,10 @@ module ActiveRecord
       # matched rather than number of rows updated.
       configuration[:found_rows] = true
 
-      options = [
-        configuration[:host],
-        configuration[:port],
-        configuration[:database],
-        configuration[:username],
-        configuration[:password],
-        configuration[:socket],
-        0
-      ]
-
-      trilogy_adapter_class.new nil, logger, options, configuration
+      trilogy_adapter_class.new(configuration)
     end
   end
+
   module ConnectionAdapters
     class TrilogyAdapter < AbstractMysqlAdapter
       ER_BAD_DB_ERROR = 1049
@@ -125,10 +116,8 @@ module ActiveRecord
         true
       end
 
-      def quote_string(string)
-        with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
-          conn.escape(string)
-        end
+      def connected?
+        !(@raw_connection.nil? || @raw_connection.closed?)
       end
 
       def active?
@@ -202,7 +191,7 @@ module ActiveRecord
         end
 
         def full_version
-          schema_cache.database_version.full_version_string
+          database_version.full_version_string
         end
 
         def get_full_version

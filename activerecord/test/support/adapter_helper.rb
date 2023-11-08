@@ -22,7 +22,8 @@ module AdapterHelper
       true
     elsif current_adapter?(:Mysql2Adapter, :TrilogyAdapter)
       conn = ActiveRecord::Base.connection
-      !conn.mariadb? && conn.database_version >= "8.0.13"
+      (conn.mariadb? && conn.database_version >= "10.2.1") ||
+        (!conn.mariadb? && conn.database_version >= "8.0.13")
     end
   end
 
@@ -49,6 +50,7 @@ module AdapterHelper
     supports_partial_index?
     supports_partitioned_indexes?
     supports_expression_index?
+    supports_index_include?
     supports_insert_returning?
     supports_insert_on_duplicate_skip?
     supports_insert_on_duplicate_update?
@@ -56,6 +58,8 @@ module AdapterHelper
     supports_optimizer_hints?
     supports_datetime_with_precision?
     supports_nulls_not_distinct?
+    supports_identity_columns?
+    supports_virtual_columns?
   ].each do |method_name|
     define_method method_name do
       ActiveRecord::Base.connection.public_send(method_name)

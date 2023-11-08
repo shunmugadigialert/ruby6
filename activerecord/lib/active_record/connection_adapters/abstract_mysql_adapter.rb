@@ -170,6 +170,10 @@ module ActiveRecord
         true
       end
 
+      def supports_insert_returning?
+        mariadb? && database_version >= "10.5.0"
+      end
+
       def get_advisory_lock(lock_name, timeout = 0) # :nodoc:
         query_value("SELECT GET_LOCK(#{quote(lock_name.to_s)}, #{timeout})") == 1
       end
@@ -531,6 +535,13 @@ module ActiveRecord
             expression = row["expression"]
             expression = expression[1..-2] if expression.start_with?("(") && expression.end_with?(")")
             expression = strip_whitespace_characters(expression)
+
+            unless mariadb?
+              # MySQL returns check constraints expression in an already escaped form.
+              # This leads to duplicate escaping later (e.g. when the expression is used in the SchemaDumper).
+              expression = expression.gsub("\\'", "'")
+            end
+
             CheckConstraintDefinition.new(table_name, expression, options)
           end
         else
@@ -643,12 +654,24 @@ module ActiveRecord
           end
         end
 
+        sql << " RETURNING #{insert.returning}" if insert.returning
         sql
       end
 
       def check_version # :nodoc:
         if database_version < "5.5.8"
           raise "Your version of MySQL (#{database_version}) is too old. Active Record supports MySQL >= 5.5.8."
+        end
+      end
+
+      #--
+      # QUOTING ==================================================
+      #++
+
+      # Quotes strings for use in SQL input.
+      def quote_string(string)
+        with_raw_connection(allow_retry: true, materialize_transactions: false) do |connection|
+          connection.escape(string)
         end
       end
 
@@ -863,6 +886,7 @@ module ActiveRecord
         end
 
         def configure_connection
+          super
           variables = @config.fetch(:variables, {}).stringify_keys
 
           # Increase timeout so the server doesn't disconnect us.

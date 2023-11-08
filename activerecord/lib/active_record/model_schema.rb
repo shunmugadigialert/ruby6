@@ -284,8 +284,10 @@ module ActiveRecord
 
       # Computes the table name, (re)sets it internally, and returns it.
       def reset_table_name # :nodoc:
-        self.table_name = if abstract_class?
-          superclass == Base ? nil : superclass.table_name
+        self.table_name = if self == Base
+          nil
+        elsif abstract_class?
+          superclass.table_name
         elsif superclass.abstract_class?
           superclass.table_name || compute_table_name
         else
@@ -435,39 +437,12 @@ module ActiveRecord
         end
       end
 
-      def attribute_types # :nodoc:
-        load_schema
-        @attribute_types ||= Hash.new(Type.default_value)
-      end
-
       def yaml_encoder # :nodoc:
         @yaml_encoder ||= ActiveModel::AttributeSet::YAMLEncoder.new(attribute_types)
       end
 
-      # Returns the type of the attribute with the given name, after applying
-      # all modifiers. This method is the only valid source of information for
-      # anything related to the types of a model's attributes. This method will
-      # access the database and load the model's schema if it is required.
-      #
-      # The return value of this method will implement the interface described
-      # by ActiveModel::Type::Value (though the object itself may not subclass
-      # it).
-      #
-      # +attr_name+ The name of the attribute to retrieve the type for. Must be
-      # a string or a symbol.
-      def type_for_attribute(attr_name, &block)
-        attr_name = attr_name.to_s
-        attr_name = attribute_aliases[attr_name] || attr_name
-
-        if block
-          attribute_types.fetch(attr_name, &block)
-        else
-          attribute_types[attr_name]
-        end
-      end
-
       # Returns the column object for the named attribute.
-      # Returns an +ActiveRecord::ConnectionAdapters::NullColumn+ if the
+      # Returns an ActiveRecord::ConnectionAdapters::NullColumn if the
       # named attribute does not exist.
       #
       #   class Person < ActiveRecord::Base
@@ -491,11 +466,6 @@ module ActiveRecord
       def column_defaults
         load_schema
         @column_defaults ||= _default_attributes.deep_dup.to_hash.freeze
-      end
-
-      def _default_attributes # :nodoc:
-        load_schema
-        @default_attributes ||= ActiveModel::AttributeSet.new({})
       end
 
       # Returns an array of column names as strings.
@@ -525,7 +495,7 @@ module ActiveRecord
       # when just after creating a table you want to populate it with some default
       # values, e.g.:
       #
-      #  class CreateJobLevels < ActiveRecord::Migration[7.1]
+      #  class CreateJobLevels < ActiveRecord::Migration[7.2]
       #    def up
       #      create_table :job_levels do |t|
       #        t.integer :id
@@ -553,6 +523,20 @@ module ActiveRecord
         initialize_find_by_cache
       end
 
+      def load_schema # :nodoc:
+        return if schema_loaded?
+        @load_schema_monitor.synchronize do
+          return if @columns_hash
+
+          load_schema!
+
+          @schema_loaded = true
+        rescue
+          reload_schema_from_cache # If the schema loading failed half way through, we must reset the state.
+          raise
+        end
+      end
+
       protected
         def initialize_load_schema_monitor
           @load_schema_monitor = Monitor.new
@@ -563,9 +547,7 @@ module ActiveRecord
           @arel_table = nil
           @column_names = nil
           @symbol_column_to_string_name_hash = nil
-          @attribute_types = nil
           @content_columns = nil
-          @default_attributes = nil
           @column_defaults = nil
           @attributes_builder = nil
           @columns = nil
@@ -594,20 +576,6 @@ module ActiveRecord
           defined?(@schema_loaded) && @schema_loaded
         end
 
-        def load_schema
-          return if schema_loaded?
-          @load_schema_monitor.synchronize do
-            return if @columns_hash
-
-            load_schema!
-
-            @schema_loaded = true
-          rescue
-            reload_schema_from_cache # If the schema loading failed half way through, we must reset the state.
-            raise
-          end
-        end
-
         def load_schema!
           unless table_name
             raise ActiveRecord::TableNotSpecified, "#{self} has no table configured. Set one with #{self}.table_name="
@@ -616,19 +584,7 @@ module ActiveRecord
           columns_hash = connection.schema_cache.columns_hash(table_name)
           columns_hash = columns_hash.except(*ignored_columns) unless ignored_columns.empty?
           @columns_hash = columns_hash.freeze
-          @columns_hash.each do |name, column|
-            type = connection.lookup_cast_type_from_column(column)
-            type = _convert_type_from_options(type)
-            define_attribute(
-              name,
-              type,
-              default: column.default,
-              user_provided_default: false
-            )
-            alias_attribute :id_value, :id if name == "id"
-          end
-
-          super
+          alias_attribute :id_value, :id if @columns_hash.key?("id")
         end
 
         # Guesses the table name, but does not decorate it with prefix and suffix information.
@@ -654,12 +610,14 @@ module ActiveRecord
           end
         end
 
-        def _convert_type_from_options(type)
+        def type_for_column(column)
+          type = connection.lookup_cast_type_from_column(column)
+
           if immutable_strings_by_default && type.respond_to?(:to_immutable_string)
-            type.to_immutable_string
-          else
-            type
+            type = type.to_immutable_string
           end
+
+          type
         end
     end
   end

@@ -116,19 +116,12 @@ module ActiveRecord
       end
 
       #--
-      # QUOTING ==================================================
-      #++
-
-      # Quotes strings for use in SQL input.
-      def quote_string(string)
-        with_raw_connection(allow_retry: true, materialize_transactions: false) do |connection|
-          connection.escape(string)
-        end
-      end
-
-      #--
       # CONNECTION MANAGEMENT ====================================
       #++
+
+      def connected?
+        !(@raw_connection.nil? || @raw_connection.closed?)
+      end
 
       def active?
         !!@raw_connection&.ping
@@ -174,7 +167,7 @@ module ActiveRecord
         end
 
         def full_version
-          schema_cache.database_version.full_version_string
+          database_version.full_version_string
         end
 
         def get_full_version

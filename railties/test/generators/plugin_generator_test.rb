@@ -284,7 +284,7 @@ class PluginGeneratorTest < Rails::Generators::TestCase
     in_plugin_context(destination_root) do
       quietly { system "bundle install" }
       output = `bin/rails db:migrate 2>&1`
-      assert $?.success?, "Command failed: #{output}"
+      assert_predicate $?, :success?, "Command failed: #{output}"
     end
   end
 
@@ -560,7 +560,7 @@ class PluginGeneratorTest < Rails::Generators::TestCase
 
     in_plugin_context(destination_root) do
       output = `bin/test 2>&1`
-      assert $?.success?, "Command failed: #{output}"
+      assert_predicate $?, :success?, "Command failed: #{output}"
     end
   end
 
@@ -710,7 +710,7 @@ class PluginGeneratorTest < Rails::Generators::TestCase
 
       run_generator
 
-      assert_file gemfile_path, /^gem 'bukkits', path: 'tmp\/bukkits'/
+      assert_file gemfile_path, /^gem "bukkits", path: "tmp\/bukkits"/
     end
   end
 
@@ -719,7 +719,7 @@ class PluginGeneratorTest < Rails::Generators::TestCase
       FileUtils.cd(destination_root)
       run_generator ["bukkits"]
 
-      assert_file gemfile_path, /gem 'bukkits', path: 'bukkits'/
+      assert_file gemfile_path, /gem "bukkits", path: "bukkits"/
     end
   end
 
@@ -728,7 +728,7 @@ class PluginGeneratorTest < Rails::Generators::TestCase
       run_generator [destination_root, "--skip-gemfile-entry"]
 
       assert_file gemfile_path do |contents|
-        assert_no_match(/gem 'bukkits', path: 'tmp\/bukkits'/, contents)
+        assert_no_match(/gem "bukkits", path: "tmp\/bukkits"/, contents)
       end
     end
   end

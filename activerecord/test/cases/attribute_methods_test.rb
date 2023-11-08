@@ -131,8 +131,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   test "caching a nil primary key" do
     klass = Class.new(Minimalistic)
-    assert_called(klass, :reset_primary_key, returns: nil) do
-      2.times { klass.primary_key }
+    klass.primary_key # warm once
+
+    assert_not_called(klass, :reset_primary_key) do
+      klass.primary_key
     end
   end
 
@@ -430,9 +432,9 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   test "read_attribute when true" do
     topic = topics(:first)
     topic.approved = true
-    assert topic.approved?, "approved should be true"
+    assert_predicate topic, :approved?, "approved should be true"
     topic.approved = "true"
-    assert topic.approved?, "approved should be true"
+    assert_predicate topic, :approved?, "approved should be true"
   end
 
   test "boolean attributes writing and reading" do
@@ -444,10 +446,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_not topic.approved?, "approved should be false"
 
     topic.approved = "true"
-    assert topic.approved?, "approved should be true"
+    assert_predicate topic, :approved?, "approved should be true"
 
     topic.approved = "true"
-    assert topic.approved?, "approved should be true"
+    assert_predicate topic, :approved?, "approved should be true"
   end
 
   test "overridden write_attribute" do

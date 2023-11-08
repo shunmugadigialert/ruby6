@@ -196,13 +196,11 @@ module ActiveRecord
         !@memory_database
       end
 
-      def active?
-        @raw_connection && !@raw_connection.closed?
+      def connected?
+        !(@raw_connection.nil? || @raw_connection.closed?)
       end
 
-      def return_value_after_insert?(column) # :nodoc:
-        column.auto_populated?
-      end
+      alias_method :active?, :connected?
 
       alias :reset! :reconnect!
 
@@ -233,6 +231,10 @@ module ActiveRecord
       end
 
       def supports_lazy_transactions?
+        true
+      end
+
+      def supports_deferrable_constraints?
         true
       end
 
@@ -365,15 +367,31 @@ module ActiveRecord
       end
       alias :add_belongs_to :add_reference
 
+      FK_REGEX = /.*FOREIGN KEY\s+\("(\w+)"\)\s+REFERENCES\s+"(\w+)"\s+\("(\w+)"\)/
+      DEFERRABLE_REGEX = /DEFERRABLE INITIALLY (\w+)/
       def foreign_keys(table_name)
         # SQLite returns 1 row for each column of composite foreign keys.
         fk_info = internal_exec_query("PRAGMA foreign_key_list(#{quote(table_name)})", "SCHEMA")
+        # Deferred or immediate foreign keys can only be seen in the CREATE TABLE sql
+        fk_defs = table_structure_sql(table_name)
+                    .select do |column_string|
+                      column_string.start_with?("CONSTRAINT") &&
+                      column_string.include?("FOREIGN KEY")
+                    end
+                    .to_h do |fk_string|
+                      _, from, table, to = fk_string.match(FK_REGEX).to_a
+                      _, mode = fk_string.match(DEFERRABLE_REGEX).to_a
+                      deferred = mode&.downcase&.to_sym || false
+                      [[table, from, to], deferred]
+                    end
+
         grouped_fk = fk_info.group_by { |row| row["id"] }.values.each { |group| group.sort_by! { |row| row["seq"] } }
         grouped_fk.map do |group|
           row = group.first
           options = {
             on_delete: extract_foreign_key_action(row["on_delete"]),
-            on_update: extract_foreign_key_action(row["on_update"])
+            on_update: extract_foreign_key_action(row["on_update"]),
+            deferrable: fk_defs[[row["table"], row["from"], row["to"]]]
           }
 
           if group.one?
@@ -647,24 +665,11 @@ module ActiveRecord
         def table_structure_with_collation(table_name, basic_structure)
           collation_hash = {}
           auto_increments = {}
-          sql = <<~SQL
-            SELECT sql FROM
-              (SELECT * FROM sqlite_master UNION ALL
-               SELECT * FROM sqlite_temp_master)
-            WHERE type = 'table' AND name = #{quote(table_name)}
-          SQL
 
-          # Result will have following sample string
-          # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          #                       "password_digest" varchar COLLATE "NOCASE");
-          result = query_value(sql, "SCHEMA")
+          column_strings = table_structure_sql(table_name)
 
-          if result
-            # Splitting with left parentheses and discarding the first part will return all
-            # columns separated with comma(,).
-            columns_string = result.split("(", 2).last
-
-            columns_string.split(",").each do |column_string|
+          if column_strings.any?
+            column_strings.each do |column_string|
               # This regex will match the column name and collation type and will save
               # the value in $1 and $2 respectively.
               collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
@@ -687,6 +692,28 @@ module ActiveRecord
           else
             basic_structure.to_a
           end
+        end
+
+        def table_structure_sql(table_name)
+          sql = <<~SQL
+            SELECT sql FROM
+              (SELECT * FROM sqlite_master UNION ALL
+               SELECT * FROM sqlite_temp_master)
+            WHERE type = 'table' AND name = #{quote(table_name)}
+          SQL
+
+          # Result will have following sample string
+          # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          #                       "password_digest" varchar COLLATE "NOCASE");
+          result = query_value(sql, "SCHEMA")
+
+          return [] unless result
+
+          # Splitting with left parentheses and discarding the first part will return all
+          # columns separated with comma(,).
+          columns_string = result.split("(", 2).last
+
+          columns_string.split(",").map(&:strip)
         end
 
         def arel_visitor
@@ -712,9 +739,42 @@ module ActiveRecord
         end
 
         def configure_connection
-          @raw_connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout])) if @config[:timeout]
+          if @config[:timeout] && @config[:retries]
+            raise ArgumentError, "Cannot specify both timeout and retries arguments"
+          elsif @config[:timeout]
+            @raw_connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout]))
+          elsif @config[:retries]
+            retries = self.class.type_cast_config_to_integer(@config[:retries])
+            raw_connection.busy_handler do |count|
+              count <= retries
+            end
+          end
 
+          super
+
+          # Enforce foreign key constraints
+          # https://www.sqlite.org/pragma.html#pragma_foreign_keys
+          # https://www.sqlite.org/foreignkeys.html
           raw_execute("PRAGMA foreign_keys = ON", "SCHEMA")
+          unless @memory_database
+            # Journal mode WAL allows for greater concurrency (many readers + one writer)
+            # https://www.sqlite.org/pragma.html#pragma_journal_mode
+            raw_execute("PRAGMA journal_mode = WAL", "SCHEMA")
+            # Set more relaxed level of database durability
+            # 2 = "FULL" (sync on every write), 1 = "NORMAL" (sync every 1000 written pages) and 0 = "NONE"
+            # https://www.sqlite.org/pragma.html#pragma_synchronous
+            raw_execute("PRAGMA synchronous = NORMAL", "SCHEMA")
+            # Set the global memory map so all processes can share some data
+            # https://www.sqlite.org/pragma.html#pragma_mmap_size
+            # https://www.sqlite.org/mmap.html
+            raw_execute("PRAGMA mmap_size = #{128.megabytes}", "SCHEMA")
+          end
+          # Impose a limit on the WAL file to prevent unlimited growth
+          # https://www.sqlite.org/pragma.html#pragma_journal_size_limit
+          raw_execute("PRAGMA journal_size_limit = #{64.megabytes}", "SCHEMA")
+          # Set the local connection cache to 2000 pages
+          # https://www.sqlite.org/pragma.html#pragma_cache_size
+          raw_execute("PRAGMA cache_size = 2000", "SCHEMA")
         end
     end
     ActiveSupport.run_load_hooks(:active_record_sqlite3adapter, SQLite3Adapter)

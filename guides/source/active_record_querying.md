@@ -817,11 +817,12 @@ If a query has a hash condition with non-nil values on a nullable column, the re
 ```ruby
 Customer.create!(nullable_country: nil)
 Customer.where.not(nullable_country: "UK")
-=> []
+# => []
+
 # But
 Customer.create!(nullable_country: "UK")
 Customer.where.not(nullable_country: nil)
-=> [#<Customer id: 2, nullable_country: "UK">]
+# => [#<Customer id: 2, nullable_country: "UK">]
 ```
 
 [`where.not`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods/WhereChain.html#method-i-not
@@ -1237,7 +1238,7 @@ the SQL executed would be:
 SELECT * FROM books WHERE out_of_print = 1 AND out_of_print = 0
 ```
 
-[`regroup`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-regroup
+[`rewhere`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-rewhere
 
 
 ### `regroup`
@@ -1639,7 +1640,7 @@ The above code will execute just **2** queries, as opposed to the **11** queries
 ```sql
 SELECT books.* FROM books LIMIT 10
 SELECT authors.* FROM authors
-  WHERE authors.book_id IN (1,2,3,4,5,6,7,8,9,10)
+  WHERE authors.id IN (1,2,3,4,5,6,7,8,9,10)
 ```
 
 #### Eager Loading Multiple Associations
@@ -1716,7 +1717,7 @@ The above code will execute just **2** queries, as opposed to the **11** queries
 ```sql
 SELECT books.* FROM books LIMIT 10
 SELECT authors.* FROM authors
-  WHERE authors.book_id IN (1,2,3,4,5,6,7,8,9,10)
+  WHERE authors.id IN (1,2,3,4,5,6,7,8,9,10)
 ```
 
 NOTE: The `preload` method uses an array, hash, or a nested hash of array/hash in the same way as the `includes` method to load any number of associations with a single `Model.find` call. However, unlike the `includes` method, it is not possible to specify conditions for preloaded associations.
@@ -1738,9 +1739,9 @@ end
 The above code will execute just **2** queries, as opposed to the **11** queries from the original case:
 
 ```sql
-SELECT DISTINCT books.id FROM books LEFT OUTER JOIN authors ON authors.book_id = books.id LIMIT 10
+SELECT DISTINCT books.id FROM books LEFT OUTER JOIN authors ON authors.id = books.author_id LIMIT 10
 SELECT books.id AS t0_r0, books.last_name AS t0_r1, ...
-  FROM books LEFT OUTER JOIN authors ON authors.book_id = books.id
+  FROM books LEFT OUTER JOIN authors ON authors.id = books.author_id
   WHERE books.id IN (1,2,3,4,5,6,7,8,9,10)
 ```
 
@@ -1762,7 +1763,15 @@ user.address.city # raises an ActiveRecord::StrictLoadingViolationError
 user.comments.to_a # raises an ActiveRecord::StrictLoadingViolationError
 ```
 
+To enable for all relations, change the
+[`config.active_record.strict_loading_by_default`][] flag to `true`.
+
+To send violations to the logger instead, change
+[`config.active_record.action_on_strict_loading_violation`][] to `:log`.
+
 [`strict_loading`]: https://api.rubyonrails.org/classes/ActiveRecord/QueryMethods.html#method-i-strict_loading
+[`config.active_record.strict_loading_by_default`]: configuring.html#config-active-record-strict-loading-by-default
+[`config.active_record.action_on_strict_loading_violation`]: configuring.html#config-active-record-action-on-strict-loading-violation
 
 ### `strict_loading!`
 
@@ -1787,6 +1796,16 @@ user.comments.first.likes.to_a # raises an ActiveRecord::StrictLoadingViolationE
 ```
 
 [`strict_loading!`]: https://api.rubyonrails.org/classes/ActiveRecord/Core.html#method-i-strict_loading-21
+
+### `strict_loading` option on an association
+
+We can also enable strict loading for a single association by providing the `strict_loading` option:
+
+```ruby
+class Author < ApplicationRecord
+  has_many :books, strict_loading: true
+end
+```
 
 Scopes
 ------
@@ -2035,61 +2054,6 @@ SELECT books.* FROM books WHERE books.out_of_print = true
 
 [`unscoped`]: https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Default/ClassMethods.html#method-i-unscoped
 
-### New Chains Inside Scope Block
-
-Unlike class methods, [`scope`][] can easily start a new clean chain against the
-model it is defined on.
-
-```ruby
-class Topic < ApplicationRecord
-  scope :toplevel, -> { where(parent_id: nil) }
-  scope :children, -> { where.not(parent_id: nil) }
-  scope :has_children, -> {
-    where(id: Topic.children.select(:parent_id))
-  }
-end
-
-Topic.toplevel.has_children
-```
-
-Inside `has_children` the `Topic` chain generates a subquery like this:
-
-```sql
-SELECT "topics"."parent_id" FROM "topics" WHERE "topics"."parent_id" IS NOT NULL
-```
-
-Class methods have different behavior which can be surprising if you expect them
-to work exactly like scopes.
-
-```ruby
-class Topic < ApplicationRecord
-  def self.toplevel
-    where(parent_id: nil)
-  end
-
-  def self.children
-    where.not(parent_id: nil)
-  end
-
-  def self.has_children
-    where(id: Topic.children.select(:parent_id))
-  end
-end
-
-Topic.toplevel.has_children
-```
-
-`Topic` inside `has_children` will implicitly include `toplevel` from the outer
-chain resulting in a subquery of:
-
-```sql
-SELECT "topics"."parent_id" FROM "topics" WHERE "topics"."parent_id" IS NULL AND "topics"."parent_id" IS NOT NULL
-```
-
-NOTE: In class methods, `self` refers back to the model. In scope, `self` acts as
-a chained relation. For the example above, `self` and `Topic` are interchangeable
-within the class method definition.
-
 Dynamic Finders
 ---------------
 
@@ -2281,7 +2245,7 @@ to your `Customer` model. If you try to create a new `Customer` without passing 
 
 ```irb
 irb> Customer.find_or_create_by!(first_name: 'Andy')
-ActiveRecord::RecordInvalid: Validation failed: Orders count can’t be blank
+ActiveRecord::RecordInvalid: Validation failed: Orders count can't be blank
 ```
 
 [`find_or_create_by!`]: https://api.rubyonrails.org/classes/ActiveRecord/Relation.html#method-i-find_or_create_by-21

@@ -24,6 +24,8 @@ if ENV["BUILDKITE"]
   Minitest::Retry.use!(verbose: false, retry_count: 1)
 end
 
+require_relative "../../../tools/test_common"
+
 RAILS_FRAMEWORK_ROOT = File.expand_path("../../..", __dir__)
 
 # These files do not require any others and are needed
@@ -446,7 +448,7 @@ module TestHelpers
 
     def remove_from_file(file, str)
       contents = File.read(file)
-      contents.sub!(/#{str}/, "")
+      contents.gsub!(/#{str}/, "")
       File.write(file, contents)
     end
 

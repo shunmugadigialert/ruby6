@@ -8,7 +8,7 @@ gemfile(true) do
   git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
   # Activate the gem you are reporting the issue against.
-  gem "rails", "~> 7.0.0"
+  gem "rails", "~> 7.1.0"
   gem "sqlite3"
 end
 
@@ -18,6 +18,8 @@ require "action_mailbox/engine"
 require "tmpdir"
 
 class TestApp < Rails::Application
+  config.load_defaults Rails::VERSION::STRING.to_f
+
   config.root = __dir__
   config.hosts << "example.org"
   config.eager_load = false

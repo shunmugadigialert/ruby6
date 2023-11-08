@@ -51,6 +51,7 @@ DEFAULT_APP_FILES = %w(
   config/initializers
   config/initializers/assets.rb
   config/initializers/content_security_policy.rb
+  config/initializers/enable_yjit.rb
   config/initializers/filter_parameter_logging.rb
   config/initializers/inflections.rb
   config/locales
@@ -109,6 +110,21 @@ class AppGeneratorTest < Rails::Generators::TestCase
     run_generator
 
     assert_file("app/assets/stylesheets/application.css")
+  end
+
+  def test_invalid_javascript_option_raises_an_error
+    content = capture(:stderr) { run_generator([destination_root, "-j", "unknown"]) }
+    assert_match(/Expected '--javascript' to be one of/, content)
+  end
+
+  def test_invalid_asset_pipeline_option_raises_an_error
+    content = capture(:stderr) { run_generator([destination_root, "-a", "unknown"]) }
+    assert_match(/Expected '--asset-pipeline' to be one of/, content)
+  end
+
+  def test_invalid_css_option_raises_an_error
+    content = capture(:stderr) { run_generator([destination_root, "-c", "unknown"]) }
+    assert_match(/Expected '--css' to be one of/, content)
   end
 
   def test_application_job_file_present
@@ -954,6 +970,9 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
     assert_file "Gemfile" do |content|
       assert_match(/ruby "#{Gem::Version.new(Gem::VERSION) >= Gem::Version.new("3.3.13") ? Gem.ruby_version : RUBY_VERSION}"/, content)
+    end
+    assert_file "Dockerfile" do |content|
+      assert_match(/ARG RUBY_VERSION=#{Gem::Version.new(Gem::VERSION) >= Gem::Version.new("3.3.13") ? Gem.ruby_version : RUBY_VERSION}/, content)
     end
     assert_file ".ruby-version" do |content|
       if ENV["RBENV_VERSION"]

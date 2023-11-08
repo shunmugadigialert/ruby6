@@ -108,10 +108,11 @@ module ActiveRecord
       # but significantly increases the risk of data loss if the database
       # crashes. As a result, this should not be used in production
       # environments. If you would like all created tables to be unlogged in
-      # the test environment you can add the following line to your test.rb
-      # file:
+      # the test environment you can add the following to your test.rb file:
       #
-      #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.create_unlogged_tables = true
+      #   ActiveSupport.on_load(:active_record_postgresqladapter) do
+      #     self.create_unlogged_tables = true
+      #   end
       class_attribute :create_unlogged_tables, default: false
 
       ##
@@ -226,7 +227,7 @@ module ActiveRecord
         true
       end
 
-      def supports_unique_keys?
+      def supports_unique_constraints?
         true
       end
 
@@ -277,16 +278,16 @@ module ActiveRecord
         database_version >= 12_00_00 # >= 12.0
       end
 
+      def supports_identity_columns? # :nodoc:
+        database_version >= 10_00_00 # >= 10.0
+      end
+
       def supports_nulls_not_distinct?
         database_version >= 15_00_00 # >= 15.0
       end
 
       def index_algorithms
         { concurrently: "CONCURRENTLY" }
-      end
-
-      def return_value_after_insert?(column) # :nodoc:
-        column.auto_populated?
       end
 
       class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
@@ -335,6 +336,10 @@ module ActiveRecord
         @notice_receiver_sql_warnings = []
 
         @use_insert_returning = @config.key?(:insert_returning) ? self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
+      end
+
+      def connected?
+        !(@raw_connection.nil? || @raw_connection.finished?)
       end
 
       # Is this connection alive and ready for queries?
@@ -535,7 +540,7 @@ module ActiveRecord
           END
           $$;
         SQL
-        internal_exec_query(query)
+        internal_exec_query(query).tap { reload_type_map }
       end
 
       # Drops an enum type.
@@ -551,7 +556,7 @@ module ActiveRecord
         query = <<~SQL
           DROP TYPE#{' IF EXISTS' if options[:if_exists]} #{quote_table_name(name)};
         SQL
-        internal_exec_query(query)
+        internal_exec_query(query).tap { reload_type_map }
       end
 
       # Rename an existing enum type to something else.
@@ -596,14 +601,6 @@ module ActiveRecord
         @max_identifier_length ||= query_value("SHOW max_identifier_length", "SCHEMA").to_i
       end
 
-      # Returns the maximum length of a table name.
-      def table_name_length
-        # PostgreSQL automatically creates an index for PRIMARY KEY with name consisting of
-        # truncated table name and "_pkey" suffix fitting into max_identifier_length number of characters.
-        # We allow smaller table names to be able to correctly rename this index when renaming the table.
-        max_identifier_length - "_pkey".length
-      end
-
       # Set the authorized user for this session
       def session_auth=(user)
         clear_cache!
@@ -616,7 +613,9 @@ module ActiveRecord
 
       # Returns the version of the connected PostgreSQL server.
       def get_database_version # :nodoc:
-        valid_raw_connection.server_version
+        with_raw_connection do |conn|
+          conn.server_version
+        end
       end
       alias :postgresql_version :database_version
 
@@ -716,9 +715,7 @@ module ActiveRecord
       end
 
       private
-        def type_map
-          @type_map ||= Type::HashLookupTypeMap.new
-        end
+        attr_reader :type_map
 
         def initialize_type_map(m = type_map)
           self.class.initialize_type_map(m)
@@ -906,10 +903,10 @@ module ActiveRecord
 
           update_typemap_for_default_timezone
 
-          stmt_key = prepare_statement(sql, binds)
-          type_casted_binds = type_casted_binds(binds)
-
           with_raw_connection do |conn|
+            stmt_key = prepare_statement(sql, binds, conn)
+            type_casted_binds = type_casted_binds(binds)
+
             log(sql, name, binds, type_casted_binds, stmt_key, async: async) do
               conn.exec_prepared(stmt_key, type_casted_binds)
             end
@@ -959,22 +956,20 @@ module ActiveRecord
 
         # Prepare the statement if it hasn't been prepared, return
         # the statement key.
-        def prepare_statement(sql, binds)
-          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
-            sql_key = sql_key(sql)
-            unless @statements.key? sql_key
-              nextkey = @statements.next_key
-              begin
-                conn.prepare nextkey, sql
-              rescue => e
-                raise translate_exception_class(e, sql, binds)
-              end
-              # Clear the queue
-              conn.get_last_result
-              @statements[sql_key] = nextkey
+        def prepare_statement(sql, binds, conn)
+          sql_key = sql_key(sql)
+          unless @statements.key? sql_key
+            nextkey = @statements.next_key
+            begin
+              conn.prepare nextkey, sql
+            rescue => e
+              raise translate_exception_class(e, sql, binds)
             end
-            @statements[sql_key]
+            # Clear the queue
+            conn.get_last_result
+            @statements[sql_key] = nextkey
           end
+          @statements[sql_key]
         end
 
         # Connects to a PostgreSQL server and sets up the adapter depending on the
@@ -998,6 +993,8 @@ module ActiveRecord
         # Configures the encoding, verbosity, schema search path, and time zone of the connection.
         # This is called by #connect and should not be called manually.
         def configure_connection
+          super
+
           if @config[:encoding]
             @raw_connection.set_client_encoding(@config[:encoding])
           end
@@ -1078,6 +1075,7 @@ module ActiveRecord
               SELECT a.attname, format_type(a.atttypid, a.atttypmod),
                      pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
                      c.collname, col_description(a.attrelid, a.attnum) AS comment,
+                     #{supports_identity_columns? ? 'attidentity' : quote('')} AS identity,
                      #{supports_virtual_columns? ? 'attgenerated' : quote('')} as attgenerated
                 FROM pg_attribute a
                 LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum

@@ -96,6 +96,19 @@ module ActiveRecord
         end
       end
 
+      def test_exec_insert_with_quote
+        with_example_table do
+          vals = [Relation::QueryAttribute.new("number", 10, Type::Value.new)]
+          @conn.exec_insert("insert into \"ex\" (number) VALUES (?)", "SQL", vals)
+
+          result = @conn.exec_query(
+            "select number from \"ex\" where number = ?", "SQL", vals)
+
+          assert_equal 1, result.rows.length
+          assert_equal 10, result.rows.first.first
+        end
+      end
+
       def test_primary_key_returns_nil_for_no_pk
         with_example_table "id int, data string" do
           assert_nil @conn.primary_key("ex")
@@ -134,6 +147,26 @@ module ActiveRecord
       # sqlite3 defaults to UTF-8 encoding
       def test_encoding
         assert_equal "UTF-8", @conn.encoding
+      end
+
+      def test_default_pragmas
+        if in_memory_db?
+          assert_equal [{ "foreign_keys" => 1 }], @conn.execute("PRAGMA foreign_keys")
+          assert_equal [{ "journal_mode" => "memory" }], @conn.execute("PRAGMA journal_mode")
+          assert_equal [{ "synchronous" => 2 }], @conn.execute("PRAGMA synchronous")
+          assert_equal [{ "journal_size_limit" => 67108864 }], @conn.execute("PRAGMA journal_size_limit")
+          assert_equal [], @conn.execute("PRAGMA mmap_size")
+          assert_equal [{ "cache_size" => 2000 }], @conn.execute("PRAGMA cache_size")
+        else
+          with_file_connection do |conn|
+            assert_equal [{ "foreign_keys" => 1 }], conn.execute("PRAGMA foreign_keys")
+            assert_equal [{ "journal_mode" => "wal" }], conn.execute("PRAGMA journal_mode")
+            assert_equal [{ "synchronous" => 1 }], conn.execute("PRAGMA synchronous")
+            assert_equal [{ "journal_size_limit" => 67108864 }], conn.execute("PRAGMA journal_size_limit")
+            assert_equal [{ "mmap_size" => 134217728 }], conn.execute("PRAGMA mmap_size")
+            assert_equal [{ "cache_size" => 2000 }], conn.execute("PRAGMA cache_size")
+          end
+        end
       end
 
       def test_exec_no_binds
@@ -224,11 +257,10 @@ module ActiveRecord
           sql = "INSERT INTO ex (number) VALUES (10)"
           name = "foo"
 
-          sqlite_version_query = ["SELECT sqlite_version(*)", "SCHEMA", []]
           pragma_query = ["PRAGMA table_info(\"ex\")", "SCHEMA", []]
           schema_query = ["SELECT sql FROM (SELECT * FROM sqlite_master UNION ALL SELECT * FROM sqlite_temp_master) WHERE type = 'table' AND name = 'ex'", "SCHEMA", []]
           modified_insert_query = [(sql + ' RETURNING "id"'), name, []]
-          assert_logged [sqlite_version_query, pragma_query, schema_query, modified_insert_query] do
+          assert_logged [pragma_query, schema_query, modified_insert_query] do
             @conn.insert(sql, name)
           end
         end
@@ -610,7 +642,7 @@ module ActiveRecord
         pk_column = connection.columns("barcodes").find { |col| col.name == "id" }
         sql = connection.exec_query("SELECT sql FROM sqlite_master WHERE tbl_name='barcodes'").rows.first.first
 
-        assert(pk_column.auto_increment?)
+        assert_predicate(pk_column, :auto_increment?)
         assert(sql.match?("PRIMARY KEY AUTOINCREMENT"))
 
         connection.change_column(:barcodes, :code, :integer)
@@ -618,7 +650,7 @@ module ActiveRecord
         pk_column = connection.columns("barcodes").find { |col| col.name == "id" }
         sql = connection.exec_query("SELECT sql FROM sqlite_master WHERE tbl_name='barcodes'").rows.first.first
 
-        assert(pk_column.auto_increment?)
+        assert_predicate(pk_column, :auto_increment?)
         assert(sql.match?("PRIMARY KEY AUTOINCREMENT"))
       end
 
@@ -814,6 +846,17 @@ module ActiveRecord
           yield
         ensure
           SQLite3Adapter.strict_strings_by_default = false
+        end
+
+        def with_file_connection(options = {})
+          options = options.dup
+          db_config = ActiveRecord::Base.configurations.configurations.find { |config| !config.database.include?(":memory:") }
+          options[:database] ||= db_config.database
+          conn = ActiveRecord::Base.sqlite3_connection(options)
+
+          yield(conn)
+        ensure
+          conn.disconnect! if conn
         end
     end
   end

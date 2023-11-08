@@ -63,7 +63,7 @@ $ bin/rails app:update
     conflict  config/application.rb
 Overwrite /myapp/config/application.rb? (enter "h" for help) [Ynaqdh]
        force  config/application.rb
-      create  config/initializers/new_framework_defaults_7_0.rb
+      create  config/initializers/new_framework_defaults_7_2.rb
 ...
 ```
 
@@ -75,18 +75,100 @@ The new Rails version might have different configuration defaults than the previ
 
 To allow you to upgrade to new defaults one by one, the update task has created a file `config/initializers/new_framework_defaults_X.Y.rb` (with the desired Rails version in the filename). You should enable the new configuration defaults by uncommenting them in the file; this can be done gradually over several deployments. Once your application is ready to run with new defaults, you can remove this file and flip the `config.load_defaults` value.
 
+Upgrading from Rails 7.1 to Rails 7.2
+-------------------------------------
+
+For more information on changes made to Rails 7.2 please see the [release notes](7_2_release_notes.html).
+
 Upgrading from Rails 7.0 to Rails 7.1
 -------------------------------------
 
 For more information on changes made to Rails 7.1 please see the [release notes](7_1_release_notes.html).
 
-### Autoloaded paths are no longer in load path
+### Autoloaded paths are no longer in $LOAD_PATH
 
-Starting from Rails 7.1, all paths managed by the autoloader will no longer be added to `$LOAD_PATH`.
-This means it won't be possible to load them with a manual `require` call, the class or module can be referenced instead.
+Starting from Rails 7.1, the directories managed by the autoloaders are no
+longer added to `$LOAD_PATH`. This means it won't be possible to load their
+files with a manual `require` call, which shouldn't be done anyway.
 
-Reducing the size of `$LOAD_PATH` speed-up `require` calls for apps not using `bootsnap`, and reduce the
-size of the `bootsnap` cache for the others.
+Reducing the size of `$LOAD_PATH` speeds up `require` calls for apps not using
+`bootsnap`, and reduces the size of the `bootsnap` cache for the others.
+
+If you'd like to have these paths still in `$LOAD_PATH`, you can opt-in:
+
+```ruby
+config.add_autoload_paths_to_load_path = true
+```
+
+but we discourage doing so, classes and modules in the autoload paths are meant
+to be autoloaded. That is, just reference them.
+
+The `lib` directory is not affected by this flag, it is added to `$LOAD_PATH`
+always.
+
+### config.autoload_lib and config.autoload_lib_once
+
+If your application does not have `lib` in the autoload or autoload once paths,
+please skip this section. You can find that out by inspecting the output of
+
+```bash
+# Print autoload paths.
+$ bin/rails runner 'pp Rails.autoloaders.main.dirs'
+
+# Print autoload once paths.
+$ bin/rails runner 'pp Rails.autoloaders.once.dirs'
+```
+
+If your application already has `lib` in the autoload paths, normally there is
+configuration in `config/application.rb` that looks something like
+
+```ruby
+# Autoload lib, but do not eager load it (maybe overlooked).
+config.autoload_paths << config.root.join("lib")
+```
+
+or
+
+```ruby
+# Autoload and also eager load lib.
+config.autoload_paths << config.root.join("lib")
+config.eager_load_paths << config.root.join("lib")
+```
+
+or
+
+```ruby
+# Same, because all eager load paths become autoload paths too.
+config.eager_load_paths << config.root.join("lib")
+```
+
+That still works, but it is recommended to replace those lines with the more
+concise
+
+```ruby
+config.autoload_lib(ignore: %w(assets tasks))
+```
+
+Please, add to the `ignore` list any other `lib` subdirectories that do not
+contain `.rb` files, or that should not be reloaded or eager loaded. For
+example, if your application has `lib/templates`, `lib/generators`, or
+`lib/middleware`, you'd add their name relative to `lib`:
+
+```ruby
+config.autoload_lib(ignore: %w(assets tasks templates generators middleware))
+```
+
+With that one-liner, the (non-ignored) code in `lib` will be also eager loaded
+if `config.eager_load` is `true` (the default in `production` mode). This is
+normally what you want, but if `lib` was not added to the eager load paths
+before and you still want it that way, please opt-out:
+
+```ruby
+Rails.autoloaders.main.do_not_eager_load(config.root.join("lib"))
+```
+
+The method `config.autoload_lib_once` is the analogous one if the application
+had `lib` in `config.autoload_once_paths`.
 
 ### `ActiveStorage::BaseController` no longer includes the streaming concern
 
@@ -101,7 +183,7 @@ If you don't want to use connection pooling, set `:pool` option to `false` when
 configuring your cache store:
 
 ```ruby
-config.cache_store = :mem_cache_store, "cache.example.com", pool: false
+config.cache_store = :mem_cache_store, "cache.example.com", { pool: false }
 ```
 
 See the [caching with Rails](https://guides.rubyonrails.org/v7.1/caching_with_rails.html#connection-pool-options) guide for more information.
@@ -164,6 +246,111 @@ See the [i18n guide](https://guides.rubyonrails.org/v7.1/i18n.html#using-differe
 
 `AbstractController::Translation.raise_on_missing_translations` has been removed. This was a private API, if you were
 relying on it you should migrate to `config.i18n.raise_on_missing_translations` or to a custom exception handler.
+
+### `bin/rails test` now runs `test:prepare` task
+
+When running tests via `bin/rails test`, the `rake test:prepare` task will run before tests run. If you've enhanced
+the `test:prepare` task, your enhancements will run before your tests. `tailwindcss-rails`, `jsbundling-rails`, and `cssbundling-rails`
+enhance this task, as do other third party gems.
+
+See the [Testing Rails Applications](https://guides.rubyonrails.org/testing.html#running-tests-in-continuous-integration-ci) guide for more information.
+
+If you run a single file's tests (`bin/rails test test/models/user_test.rb`), `test:prepare` will not run before it.
+
+### `ActionView::TestCase#rendered` no longer returns a `String`
+
+Starting from Rails 7.1, `ActionView::TestCase#rendered` returns an object that
+responds to various format methods (for example, `rendered.html` and
+`rendered.json`). To preserve backward compatibility, the object returned from
+`rendered` will delegate missing methods to the `String` rendered during the
+test. For example, the following [assert_match][] assertion will pass:
+
+```ruby
+assert_match(/some content/i, rendered)
+```
+
+However, if your tests rely on `ActionView::TestCase#rendered` returning an
+instance of `String`, they will fail. To restore the original behavior, you can
+override the `#rendered` method to read from the `@rendered` instance variable:
+
+```ruby
+# config/initializers/action_view.rb
+
+ActiveSupport.on_load :action_view_test_case do
+  attr_reader :rendered
+end
+```
+
+### `Rails.logger` now returns an `ActiveSupport::BroadcastLogger` instance
+
+The `ActiveSupport::BroadcastLogger` class is a new logger that allows to broadcast logs to different sinks (STDOUT, a log file...) in an easy way.
+
+The API to broadcast logs (using the `ActiveSupport::Logger.broadcast` method) was removed and was previously private.
+If your application or library was relying on this API, you need to make the following changes:
+
+```ruby
+logger = Logger.new("some_file.log")
+
+# Before
+
+Rails.logger.extend(ActiveSupport::Logger.broadcast(logger))
+
+# After
+
+Rails.logger.broadcast_to(logger)
+```
+
+If your application had configured a custom logger, `Rails.logger` will wrap and proxy all methods to it. No changes on your side are required to make it work.
+
+If you need to access your custom logger instance, you can do so using the `broadcasts` method:
+
+```ruby
+# config/application.rb
+config.logger = MyLogger.new
+
+# Anywhere in your application
+puts Rails.logger.class #=> BroadcastLogger
+puts Rails.logger.broadcasts #=> [MyLogger]
+```
+
+[assert_match]: https://docs.seattlerb.org/minitest/Minitest/Assertions.html#method-i-assert_match
+
+
+### Active Record Encryption algorithm changes
+
+Active Record Encryption now uses SHA-256 as its hash digest algorithm. If you have data encrypted with previous Rails
+versions, there are two scenarios to consider:
+
+1. If you have `config.active_support.key_generator_hash_digest_class` configured as SHA-1 (the default
+   before Rails 7.0), you need to configure SHA-1 for Active Record Encryption too:
+
+    ```ruby
+    config.active_record.encryption.hash_digest_class = OpenSSL::Digest::SHA1
+    ```
+
+2. If you have `config.active_support.key_generator_hash_digest_class` configured as SHA-256 (the new default
+   in 7.0), then you need to configure SHA-256 for Active Record Encryption:
+
+    ```ruby
+    config.active_record.encryption.hash_digest_class = OpenSSL::Digest::SHA256
+    ```
+
+See the [Configuring Rails Applications](configuring.html#config-active-record-encryption-hash-digest-class)
+guide for more information on `config.active_record.encryption.hash_digest_class`.
+
+In addition, a new configuration [`config.active_record.encryption.support_sha1_for_non_deterministic_encryption`](configuring.html#config-active-record-encryption-support-sha1-for-non-deterministic-encryption)
+was introduced to resolve [a bug](https://github.com/rails/rails/issues/42922) that caused some attributes to be
+encrypted using SHA-1 even when SHA-256 was configured via the aforementioned `hash_digest_class` configuration.
+
+By default, `config.active_record.encryption.support_sha1_for_non_deterministic_encryption` is disabled in
+Rails 7.1. If you have data encrypted in a version of Rails < 7.1 that you believe may be affected
+by the aforementioned bug, this configuration should be enabled:
+
+```ruby
+config.active_record.encryption.support_sha1_for_non_deterministic_encryption = true
+```
+
+If you are working with encrypted data, please carefully review the above.
 
 Upgrading from Rails 6.1 to Rails 7.0
 -------------------------------------
@@ -513,6 +700,8 @@ The schema file will look like this:
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[6.1].define(version: 2022_01_28_123512) do
+  # ...
+end
 ```
 
 NOTE: The first time you dump the schema with Rails 7.0, you will see many changes to that file, including
@@ -1044,10 +1233,10 @@ class User < ApplicationRecord
   has_many_attached :highlights
 end
 
-user.highlights.attach(filename: "funky.jpg", ...)
+user.highlights.attach(filename: "funky.jpg")
 user.highlights.count # => 1
 
-blob = ActiveStorage::Blob.create_after_upload!(filename: "town.jpg", ...)
+blob = ActiveStorage::Blob.create_after_upload!(filename: "town.jpg")
 user.update!(highlights: [ blob ])
 
 user.highlights.count # => 2
@@ -1058,10 +1247,10 @@ user.highlights.second.filename # => "town.jpg"
 With the configuration defaults for Rails 6.0, assigning to a collection of attachments replaces existing files instead of appending to them. This matches Active Record behavior when assigning to a collection association:
 
 ```ruby
-user.highlights.attach(filename: "funky.jpg", ...)
+user.highlights.attach(filename: "funky.jpg")
 user.highlights.count # => 1
 
-blob = ActiveStorage::Blob.create_after_upload!(filename: "town.jpg", ...)
+blob = ActiveStorage::Blob.create_after_upload!(filename: "town.jpg")
 user.update!(highlights: [ blob ])
 
 user.highlights.count # => 1
@@ -1071,7 +1260,7 @@ user.highlights.first.filename # => "town.jpg"
 `#attach` can be used to add new attachments without removing the existing ones:
 
 ```ruby
-blob = ActiveStorage::Blob.create_after_upload!(filename: "town.jpg", ...)
+blob = ActiveStorage::Blob.create_after_upload!(filename: "town.jpg")
 user.highlights.attach(blob)
 
 user.highlights.count # => 2
@@ -1103,7 +1292,7 @@ The `app:update` command sets it up in `boot.rb`. If you want to use it, then ad
 
 ```ruby
 # Reduces boot times through caching; required in config/boot.rb
-gem 'bootsnap', require: false
+gem "bootsnap", require: false
 ```
 
 Otherwise change the `boot.rb` to not use bootsnap.
@@ -1254,7 +1443,7 @@ See [#19034](https://github.com/rails/rails/pull/19034) for more details.
 #### Extraction of some helper methods to `rails-controller-testing`
 
 `assigns` and `assert_template` have been extracted to the `rails-controller-testing` gem. To
-continue using these methods in your controller tests, add `gem 'rails-controller-testing'` to
+continue using these methods in your controller tests, add `gem "rails-controller-testing"` to
 your `Gemfile`.
 
 If you are using RSpec for testing, please see the extra configuration required in the gem's
@@ -1286,7 +1475,7 @@ production, set `Rails.application.config.enable_dependency_loading` to true.
 ### XML Serialization
 
 `ActiveModel::Serializers::Xml` has been extracted from Rails to the `activemodel-serializers-xml`
-gem. To continue using XML serialization in your application, add `gem 'activemodel-serializers-xml'`
+gem. To continue using XML serialization in your application, add `gem "activemodel-serializers-xml"`
 to your `Gemfile`.
 
 ### Removed Support for Legacy `mysql` Database Adapter
@@ -1358,7 +1547,7 @@ You can now just call the dependency once with a wildcard.
 `content_tag_for` and `div_for` have been removed in favor of just using `content_tag`. To continue using the older methods, add the `record_tag_helper` gem to your `Gemfile`:
 
 ```ruby
-gem 'record_tag_helper', '~> 1.0'
+gem "record_tag_helper", "~> 1.0"
 ```
 
 See [#18411](https://github.com/rails/rails/pull/18411) for more details.
@@ -1526,11 +1715,11 @@ Upgrading from Rails 4.1 to Rails 4.2
 
 ### Web Console
 
-First, add `gem 'web-console', '~> 2.0'` to the `:development` group in your `Gemfile` and run `bundle install` (it won't have been included when you upgraded Rails). Once it's been installed, you can simply drop a reference to the console helper (i.e., `<%= console %>`) into any view you want to enable it for. A console will also be provided on any error page you view in your development environment.
+First, add `gem "web-console", "~> 2.0"` to the `:development` group in your `Gemfile` and run `bundle install` (it won't have been included when you upgraded Rails). Once it's been installed, you can simply drop a reference to the console helper (i.e., `<%= console %>`) into any view you want to enable it for. A console will also be provided on any error page you view in your development environment.
 
 ### Responders
 
-`respond_with` and the class-level `respond_to` methods have been extracted to the `responders` gem. To use them, simply add `gem 'responders', '~> 2.0'` to your `Gemfile`. Calls to `respond_with` and `respond_to` (again, at the class level) will no longer work without having included the `responders` gem in your dependencies:
+`respond_with` and the class-level `respond_to` methods have been extracted to the `responders` gem. To use them, simply add `gem "responders", "~> 2.0"` to your `Gemfile`. Calls to `respond_with` and `respond_to` (again, at the class level) will no longer work without having included the `responders` gem in your dependencies:
 
 ```ruby
 # app/controllers/users_controller.rb
@@ -1679,7 +1868,7 @@ can gain complete control over when and how elements should be stripped.
 If your application needs to use the old sanitizer implementation, include `rails-deprecated_sanitizer` in your `Gemfile`:
 
 ```ruby
-gem 'rails-deprecated_sanitizer'
+gem "rails-deprecated_sanitizer"
 ```
 
 ### Rails DOM Testing
@@ -1700,15 +1889,15 @@ invocation of the instance methods are deferred until either `deliver_now` or
 
 ```ruby
 class Notifier < ActionMailer::Base
-  def notify(user, ...)
+  def notify(user)
     puts "Called"
-    mail(to: user.email, ...)
+    mail(to: user.email)
   end
 end
 ```
 
 ```ruby
-mail = Notifier.notify(user, ...) # Notifier#notify is not yet called at this point
+mail = Notifier.notify(user) # Notifier#notify is not yet called at this point
 mail = mail.deliver_now           # Prints "Called"
 ```
 
@@ -1774,7 +1963,7 @@ you must now explicitly skip CSRF protection on those actions.
 
 If you want to use Spring as your application preloader you need to:
 
-1. Add `gem 'spring', group: :development` to your `Gemfile`.
+1. Add `gem "spring", group: :development` to your `Gemfile`.
 2. Install spring using `bundle install`.
 3. Generate the Spring binstub with `bundle exec spring binstub`.
 
@@ -2326,11 +2515,11 @@ Rails 4.0 no longer supports loading plugins from `vendor/plugins`. You must rep
 * Rails 4.0 has changed to default join table for `has_and_belongs_to_many` relations to strip the common prefix off the second table name. Any existing `has_and_belongs_to_many` relationship between models with a common prefix must be specified with the `join_table` option. For example:
 
     ```ruby
-    CatalogCategory < ActiveRecord::Base
+    class CatalogCategory < ActiveRecord::Base
       has_and_belongs_to_many :catalog_products, join_table: 'catalog_categories_catalog_products'
     end
 
-    CatalogProduct < ActiveRecord::Base
+    class CatalogProduct < ActiveRecord::Base
       has_and_belongs_to_many :catalog_categories, join_table: 'catalog_categories_catalog_products'
     end
     ```
@@ -2382,7 +2571,7 @@ Rails 4.0 extracted Active Resource to its own gem. If you still need the featur
 
 * Rails 4.0 changes the default `layout` lookup set using symbols or procs that return nil. To get the "no layout" behavior, return false instead of nil.
 
-* Rails 4.0 changes the default memcached client from `memcache-client` to `dalli`. To upgrade, simply add `gem 'dalli'` to your `Gemfile`.
+* Rails 4.0 changes the default memcached client from `memcache-client` to `dalli`. To upgrade, simply add `gem "dalli"` to your `Gemfile`.
 
 * Rails 4.0 deprecates the `dom_id` and `dom_class` methods in controllers (they are fine in views). You will need to include the `ActionView::RecordIdentifier` module in controllers requiring this feature.
 
@@ -2521,12 +2710,12 @@ The following changes are meant for upgrading your application to the latest
 Make the following changes to your `Gemfile`.
 
 ```ruby
-gem 'rails', '3.2.21'
+gem "rails", "3.2.21"
 
 group :assets do
-  gem 'sass-rails',   '~> 3.2.6'
-  gem 'coffee-rails', '~> 3.2.2'
-  gem 'uglifier',     '>= 1.0.3'
+  gem "sass-rails",   "~> 3.2.6"
+  gem "coffee-rails", "~> 3.2.2"
+  gem "uglifier",     ">= 1.0.3"
 end
 ```
 
@@ -2572,18 +2761,18 @@ The following changes are meant for upgrading your application to Rails 3.1.12, 
 Make the following changes to your `Gemfile`.
 
 ```ruby
-gem 'rails', '3.1.12'
-gem 'mysql2'
+gem "rails", "3.1.12"
+gem "mysql2"
 
 # Needed for the new asset pipeline
 group :assets do
-  gem 'sass-rails',   '~> 3.1.7'
-  gem 'coffee-rails', '~> 3.1.1'
-  gem 'uglifier',     '>= 1.0.3'
+  gem "sass-rails",   "~> 3.1.7"
+  gem "coffee-rails", "~> 3.1.1"
+  gem "uglifier",     ">= 1.0.3"
 end
 
 # jQuery is the default JavaScript library in Rails 3.1
-gem 'jquery-rails'
+gem "jquery-rails"
 ```
 
 ### config/application.rb
@@ -2592,7 +2781,7 @@ The asset pipeline requires the following additions:
 
 ```ruby
 config.assets.enabled = true
-config.assets.version = '1.0'
+config.assets.version = "1.0"
 ```
 
 If your application is using an "/assets" route for a resource you may want to change the prefix used for assets to avoid conflicts:

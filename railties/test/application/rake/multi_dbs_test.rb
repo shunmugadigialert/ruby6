@@ -692,6 +692,28 @@ module ApplicationTests
         db_up_and_down "02", "animals"
       end
 
+      test "db:migrate:down:namespace and db:migrate:up:namespace dumps schema only for specific database" do
+        require "#{app_path}/config/environment"
+
+        app_file "db/migrate/01_one_migration.rb", <<-MIGRATION
+          class OneMigration < ActiveRecord::Migration::Current
+          end
+        MIGRATION
+
+        app_file "db/animals_migrate/02_two_migration.rb", <<-MIGRATION
+          class TwoMigration < ActiveRecord::Migration::Current
+          end
+        MIGRATION
+
+        Dir.chdir(app_path) do
+          rails("db:migrate:up:primary", "VERSION=01")
+          rails("db:migrate:down:primary", "VERSION=01")
+
+          assert File.exist?("db/schema.rb"), "should dump schema for primary database"
+          assert_not File.exist?("db/animals_schema.rb"), "should not dump schema for animals database"
+        end
+      end
+
       test "db:migrate:redo raises in a multi-db application" do
         require "#{app_path}/config/environment"
         db_migrate_redo
@@ -742,6 +764,20 @@ module ApplicationTests
         db_migrate_and_rollback "animals"
       end
 
+      test "db:rollback:namespace dumps schema only for specific database" do
+        Dir.chdir(app_path) do
+          rails "generate", "model", "book", "title:string"
+          rails "generate", "model", "dog", "name:string", "--database animals"
+          rails "db:migrate"
+          File.delete("db/animals_schema.rb")
+
+          rails "db:rollback:primary"
+
+          assert File.exist?("db/schema.rb"), "should dump schema for primary database"
+          assert_not File.exist?("db/animals_schema.rb"), "should not dump schema for animals database"
+        end
+      end
+
       test "db:migrate:status works on all databases" do
         require "#{app_path}/config/environment"
         db_migrate_and_migrate_status
@@ -786,8 +822,11 @@ module ApplicationTests
         cache_tables_a = rails("runner", "p ActiveRecord::Base.connection.schema_cache.columns('books')").strip
         assert_includes cache_tables_a, "title", "expected cache_tables_a to include a title entry"
 
-        cache_size_b = rails("runner", "p AnimalsBase.connection.schema_cache.size", stderr: true).strip
-        assert_equal "0", cache_size_b
+        expired_warning = capture(:stderr) do
+          cache_size_b = rails("runner", "p AnimalsBase.connection.schema_cache.size", stderr: true).strip
+          assert_equal "0", cache_size_b
+        end
+        assert_match(/Ignoring .*\.yml because it has expired/, expired_warning)
 
         cache_tables_b = rails("runner", "p AnimalsBase.connection.schema_cache.columns('dogs')").strip
         assert_includes cache_tables_b, "name", "expected cache_tables_b to include a name entry"

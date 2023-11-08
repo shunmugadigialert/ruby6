@@ -374,6 +374,69 @@ Article destroyed
 => #<User id: 1>
 ```
 
+Association Callbacks
+---------------------
+
+Association callbacks are similar to normal callbacks, but they are triggered by events in the life cycle of a collection. There are four available association callbacks:
+
+* `before_add`
+* `after_add`
+* `before_remove`
+* `after_remove`
+
+You define association callbacks by adding options to the association declaration. For example:
+
+```ruby
+class Author < ApplicationRecord
+  has_many :books, before_add: :check_credit_limit
+
+  def check_credit_limit(book)
+    # ...
+  end
+end
+```
+
+Rails passes the object being added or removed to the callback.
+
+You can stack callbacks on a single event by passing them as an array:
+
+```ruby
+class Author < ApplicationRecord
+  has_many :books,
+    before_add: [:check_credit_limit, :calculate_shipping_charges]
+
+  def check_credit_limit(book)
+    # ...
+  end
+
+  def calculate_shipping_charges(book)
+    # ...
+  end
+end
+```
+
+If a `before_add` callback throws `:abort`, the object does not get added to
+the collection. Similarly, if a `before_remove` callback throws `:abort`, the
+object does not get removed from the collection:
+
+```ruby
+# book won't be added if the limit has been reached
+def check_credit_limit(book)
+  throw(:abort) if limit_reached?
+end
+```
+
+NOTE: These callbacks are called only when the associated objects are added or removed through the association collection:
+
+```ruby
+# Triggers `before_add` callback
+author.books << book
+author.books = [book, book2]
+
+# Does not trigger the `before_add` callback
+book.update(author_id: 1)
+```
+
 Conditional Callbacks
 ---------------------
 
@@ -498,9 +561,9 @@ You can declare as many callbacks as you want inside your callback classes.
 Transaction Callbacks
 ---------------------
 
-### Dealing With Consistency
+### `after_commit` and `after_rollback`
 
-There are two additional callbacks that are triggered by the completion of a database transaction: [`after_commit`][] and [`after_rollback`][]. These callbacks are very similar to the `after_save` callback except that they don't execute until after database changes have either been committed or rolled back. They are most useful when your active record models need to interact with external systems which are not part of the database transaction.
+There are two additional callbacks that are triggered by the completion of a database transaction: [`after_commit`][] and [`after_rollback`][]. These callbacks are very similar to the `after_save` callback except that they don't execute until after database changes have either been committed or rolled back. They are most useful when your Active Record models need to interact with external systems which are not part of the database transaction.
 
 Consider, for example, the previous example where the `PictureFile` model needs to delete a file after the corresponding record is destroyed. If anything raises an exception after the `after_destroy` callback is called and the transaction rolls back, the file will have been deleted and the model will be left in an inconsistent state. For example, suppose that `picture_file_2` in the code below is not valid and the `save!` method raises an error.
 
@@ -527,7 +590,23 @@ end
 
 NOTE: The `:on` option specifies when a callback will be fired. If you don't supply the `:on` option the callback will fire for every action.
 
-### Context Matters
+WARNING. When a transaction completes, the `after_commit` or `after_rollback` callbacks are called for all models created, updated, or destroyed within that transaction. However, if an exception is raised within one of these callbacks, the exception will bubble up and any remaining `after_commit` or `after_rollback` methods will _not_ be executed. As such, if your callback code could raise an exception, you'll need to rescue it and handle it within the callback in order to allow other callbacks to run.
+
+WARNING. The code executed within `after_commit` or `after_rollback` callbacks is itself not enclosed within a transaction.
+
+WARNING. In the context of a single transaction, if you interact with multiple
+loaded objects that represent the same record in the database, there's a crucial
+behavior in the `after_commit` and `after_rollback` callbacks to note. These
+callbacks are triggered only for the first object of the specific record that
+undergoes a change within the transaction. Other loaded objects, despite
+representing the same database record, will not have their respective
+`after_commit` or `after_rollback` callbacks triggered. This nuanced behavior is
+particularly impactful in scenarios where you expect independent callback
+execution for each object associated with the same database record. It can
+influence the flow and predictability of callback sequences, leading to potential
+inconsistencies in application logic following the transaction.
+
+### Aliases for `after_commit`
 
 Since using the `after_commit` callback only on create, update, or delete is
 common, there are aliases for those operations:
@@ -547,10 +626,6 @@ class PictureFile < ApplicationRecord
   end
 end
 ```
-
-WARNING. When a transaction completes, the `after_commit` or `after_rollback` callbacks are called for all models created, updated, or destroyed within that transaction. However, if an exception is raised within one of these callbacks, the exception will bubble up and any remaining `after_commit` or `after_rollback` methods will _not_ be executed. As such, if your callback code could raise an exception, you'll need to rescue it and handle it within the callback in order to allow other callbacks to run.
-
-WARNING. The code executed within `after_commit` or `after_rollback` callbacks is itself not enclosed within a transaction.
 
 WARNING. Using both `after_create_commit` and `after_update_commit` with the same method name will only allow the last callback defined to take effect, as they both internally alias to `after_commit` which overrides previously defined callbacks with the same method name.
 
@@ -598,7 +673,9 @@ User was saved to database
 
 ### Transactional Callback Ordering
 
-When defining multiple transactional `after_` callbacks (`after_commit`, `after_rollback`, etc), the order will be reversed from when they are defined.
+By default, callbacks will run in the order they are defined. However, when
+defining multiple transactional `after_` callbacks (`after_commit`,
+`after_rollback`, etc), the order could be reversed from when they are defined.
 
 ```ruby
 class User < ActiveRecord::Base
@@ -608,6 +685,15 @@ end
 ```
 
 NOTE: This applies to all `after_*_commit` variations too, such as `after_destroy_commit`.
+
+This order can be set via configuration:
+
+```ruby
+config.active_record.run_after_transaction_callbacks_in_order_defined = false
+```
+
+When set to `true` (the default from Rails 7.1), callbacks are executed in the order they
+are defined. When set to `false`, the order is reversed, just like in the example above.
 
 [`after_create_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_create_commit
 [`after_destroy_commit`]: https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html#method-i-after_destroy_commit

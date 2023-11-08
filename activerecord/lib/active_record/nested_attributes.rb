@@ -283,13 +283,11 @@ module ActiveRecord
     #
     # === Creating forms with nested attributes
     #
-    # Use ActionView::Helpers::FormHelper#fields_for to create form elements
-    # for updating or destroying nested attributes.
+    # Use ActionView::Helpers::FormHelper#fields_for to create form elements for
+    # nested attributes.
     #
-    # === Testing
-    #
-    # If you are using ActionView::Helpers::FormHelper#fields_for, your integration
-    # tests should replicate the HTML structure it provides. For example;
+    # Integration test params should reflect the structure of the form. For
+    # example:
     #
     #   post members_path, params: {
     #     member: {
@@ -309,7 +307,7 @@ module ActiveRecord
       # [:allow_destroy]
       #   If true, destroys any members from the attributes hash with a
       #   <tt>_destroy</tt> key and a value that evaluates to +true+
-      #   (e.g. 1, '1', true, or 'true'). This option is off by default.
+      #   (e.g. 1, '1', true, or 'true'). This option is false by default.
       # [:reject_if]
       #   Allows you to specify a Proc or a Symbol pointing to a method
       #   that checks whether a record should be built for a certain attribute
@@ -334,11 +332,11 @@ module ActiveRecord
       #   nested attributes are going to be used when an associated record already
       #   exists. In general, an existing record may either be updated with the
       #   new set of attribute values or be replaced by a wholly new record
-      #   containing those values. By default the +:update_only+ option is +false+
+      #   containing those values. By default the +:update_only+ option is false
       #   and the nested attributes are used to update the existing record only
       #   if they include the record's <tt>:id</tt> value. Otherwise a new
       #   record will be instantiated and used to replace the existing one.
-      #   However if the +:update_only+ option is +true+, the nested attributes
+      #   However if the +:update_only+ option is true, the nested attributes
       #   are used to update the record's attributes always, regardless of
       #   whether the <tt>:id</tt> is present. The option is ignored for collection
       #   associations.
@@ -355,16 +353,11 @@ module ActiveRecord
         options.update(attr_names.extract_options!)
         options.assert_valid_keys(:allow_destroy, :reject_if, :limit, :update_only)
         options[:reject_if] = REJECT_ALL_BLANK_PROC if options[:reject_if] == :all_blank
-        options[:class] = self
 
         attr_names.each do |association_name|
           if reflection = _reflect_on_association(association_name)
             reflection.autosave = true
             define_autosave_validation_callbacks(reflection)
-
-            if nested_attributes_options.dig(association_name.to_sym, :class) == self
-              raise ArgumentError, "Already declared #{association_name} as an accepts_nested_attributes association for this class."
-            end
 
             nested_attributes_options = self.nested_attributes_options.dup
             nested_attributes_options[association_name.to_sym] = options

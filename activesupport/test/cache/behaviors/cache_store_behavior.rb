@@ -677,9 +677,7 @@ module CacheStoreBehavior
   def test_cache_hit_instrumentation
     key = "test_key"
     @events = []
-    ActiveSupport::Notifications.subscribe "cache_read.active_support" do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
+    ActiveSupport::Notifications.subscribe("cache_read.active_support") { |event| @events << event }
     assert @cache.write(key, "1", raw: true)
     assert @cache.fetch(key, raw: true) { }
     assert_equal 1, @events.length
@@ -692,9 +690,7 @@ module CacheStoreBehavior
 
   def test_cache_miss_instrumentation
     @events = []
-    ActiveSupport::Notifications.subscribe(/^cache_(.*)\.active_support$/) do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
+    ActiveSupport::Notifications.subscribe(/^cache_(.*)\.active_support$/) { |event| @events << event }
     assert_not @cache.fetch(SecureRandom.uuid) { }
     assert_equal 3, @events.length
     assert_equal "cache_read.active_support", @events[0].name
@@ -704,6 +700,17 @@ module CacheStoreBehavior
     assert_not @events[0].payload[:hit]
   ensure
     ActiveSupport::Notifications.unsubscribe "cache_read.active_support"
+  end
+
+  def test_setting_options_in_fetch_block_does_not_change_cache_options
+    key = SecureRandom.uuid
+
+    assert_no_changes -> { @cache.options.dup } do
+      @cache.fetch(key) do |_key, options|
+        options.expires_in = 5.minutes
+        "bar"
+      end
+    end
   end
 
   private

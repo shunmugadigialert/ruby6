@@ -25,7 +25,7 @@ class StringInflectionsTest < ActiveSupport::TestCase
   end
 
   def test_strip_heredoc_on_a_frozen_string
-    assert "".strip_heredoc.frozen?
+    assert_predicate "".strip_heredoc, :frozen?
   end
 
   def test_strip_heredoc_on_a_string_with_no_lines
@@ -100,6 +100,7 @@ class StringInflectionsTest < ActiveSupport::TestCase
 
   def test_downcase_first_with_empty_string
     assert_equal "", "".downcase_first
+    assert_not_predicate "".downcase_first, :frozen?
   end
 
   def test_upcase_first
@@ -112,6 +113,7 @@ class StringInflectionsTest < ActiveSupport::TestCase
 
   def test_upcase_first_with_empty_string
     assert_equal "", "".upcase_first
+    assert_not_predicate "".upcase_first, :frozen?
   end
 
   def test_camelize

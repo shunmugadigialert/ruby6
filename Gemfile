@@ -27,7 +27,7 @@ gem "stimulus-rails"
 gem "turbo-rails"
 gem "jsbundling-rails"
 gem "cssbundling-rails"
-gem "importmap-rails"
+gem "importmap-rails", ">= 1.2.3"
 gem "tailwindcss-rails"
 gem "dartsass-rails"
 # require: false so bcrypt is loaded only when has_secure_password is used.
@@ -193,6 +193,6 @@ gem "wdm", ">= 0.1.0", platforms: [:windows]
 # The error_highlight gem only works on CRuby 3.1 or later.
 # Also, Rails depends on a new API available since error_highlight 0.4.0.
 # (Note that Ruby 3.1 bundles error_highlight 0.3.0.)
-if RUBY_VERSION >= "3.1"
+if RUBY_VERSION >= "3.1" && RUBY_VERSION < "3.2"
   gem "error_highlight", ">= 0.4.0", platforms: [:ruby]
 end
