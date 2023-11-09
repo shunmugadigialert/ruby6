@@ -755,6 +755,12 @@ class EnumTest < ActiveRecord::TestCase
     assert_equal "proposed", book.aliased_status
   end
 
+  test "enum with a hash with symbol values" do
+    book = Book.create!(symbol_status: :proposed)
+    assert_equal "proposed", book.symbol_status
+    assert_predicate book, :symbol_status_proposed?
+  end
+
   test "query state by predicate with prefix" do
     assert_predicate @book, :author_visibility_visible?
     assert_not_predicate @book, :author_visibility_invisible?
