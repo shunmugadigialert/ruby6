@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/object/with"
 require "active_support/test_case"
 require "rails-dom-testing"
 
@@ -34,14 +35,13 @@ module ActionMailer
 
       include ActiveSupport::Testing::ConstantLookup
       include TestHelper
-      include Rails::Dom::Testing::Assertions::SelectorAssertions
-      include Rails::Dom::Testing::Assertions::DomAssertions
 
       included do
         class_attribute :_mailer_class
         setup :initialize_test_deliveries
         setup :set_expected_mail
         teardown :restore_test_deliveries
+        attr_accessor :html_document
         ActiveSupport.run_load_hooks(:action_mailer_test_case, self)
       end
 
@@ -147,7 +147,11 @@ module ActionMailer
       def assert_html_part(mail = last_delivered_mail!, html_version: nil)
         parser = Rails::Dom::Testing.html_document_fragment(html_version: html_version)
 
-        assert_part(mail, :html) { |part| yield parser.parse(part.body.raw_source) if block_given? }
+        assert_part(mail, :html) do |part|
+          with html_document: parser.parse(part.body.raw_source) do
+            yield html_document if block_given?
+          end
+        end
       end
 
       private
