@@ -108,7 +108,7 @@ module ActiveRecord
             oid = row[4]
             comment = row[5]
             valid = row[6]
-            using, expressions, include, nulls_not_distinct, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: INCLUDE \((.+?)\))?( NULLS NOT DISTINCT)?(?: WHERE (.+))?\z/m).flatten
+            using, expressions, include, nulls_not_distinct, with, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: INCLUDE \((.+?)\))?( NULLS NOT DISTINCT)?(?: WITH \((.+)\))?(?: WHERE (.+))?\z/m).flatten
 
             orders = {}
             opclasses = {}
@@ -134,6 +134,15 @@ module ActiveRecord
               end
             end
 
+            with_params = {}
+            if with
+              with.split(", ").each do |w|
+                k, v = w.split("=", 2)
+                v = v[1..-2] if v.start_with?("'")
+                with_params[k] = v
+              end
+            end
+
             IndexDefinition.new(
               table_name,
               index_name,
@@ -145,6 +154,7 @@ module ActiveRecord
               using: using.to_sym,
               include: include_columns.presence,
               nulls_not_distinct: nulls_not_distinct.present?,
+              with: with_params.presence,
               comment: comment.presence,
               valid: valid
             )
