@@ -1,3 +1,11 @@
+*   Add support for index storage parameters for PostgreSQL.
+
+    ```ruby
+    add_index :users, :email, with: { fillfactor: 50 }
+    ```
+
+    *Andrew Kane*
+
 *   In cases where MySQL returns `warning_count` greater than zero, but returns no warnings when
     the `SHOW WARNINGS` query is executed, `ActiveRecord.db_warnings_action` proc will still be
     called with a generic warning message rather than silently ignoring the warning(s).
