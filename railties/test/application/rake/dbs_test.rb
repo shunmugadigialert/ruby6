@@ -269,6 +269,8 @@ module ApplicationTests
       end
 
       test "db:drop failure because bad permissions" do
+        ENV["DISABLE_DATABASE_ENVIRONMENT_CHECK"] = "1"
+
         with_database_existing do
           with_bad_permissions do
             output = rails("db:drop", allow_failure: true)
@@ -276,6 +278,8 @@ module ApplicationTests
             assert_equal 1, $?.exitstatus
           end
         end
+      ensure
+        ENV.delete("DISABLE_DATABASE_ENVIRONMENT_CHECK")
       end
 
       test "db:truncate_all truncates all non-internal tables" do
