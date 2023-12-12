@@ -39,8 +39,8 @@ module ActiveJob
     # deserialized without mutation are returned as-is. Arrays/Hashes are
     # deserialized element by element. All other types are deserialized using
     # GlobalID.
-    def deserialize(arguments)
-      arguments.map { |argument| deserialize_argument(argument) }
+    def deserialize(arguments, &block)
+      arguments.map { |argument| deserialize_argument(argument, &block) }
     rescue
       raise DeserializationError
     end
@@ -107,7 +107,7 @@ module ActiveJob
         end
       end
 
-      def deserialize_argument(argument)
+      def deserialize_argument(argument, &block)
         case argument
         when nil, true, false, String, Integer, Float
           argument
@@ -115,7 +115,7 @@ module ActiveJob
           argument.map { |arg| deserialize_argument(arg) }
         when Hash
           if serialized_global_id?(argument)
-            deserialize_global_id argument
+            deserialize_global_id argument, &block
           elsif custom_serialized?(argument)
             Serializers.deserialize(argument)
           else
@@ -131,7 +131,15 @@ module ActiveJob
       end
 
       def deserialize_global_id(hash)
-        GlobalID::Locator.locate hash[GLOBALID_KEY]
+        global_id = GlobalID.parse(hash[GLOBALID_KEY])
+        options =
+          if block_given?
+            yield global_id.model_class
+          else
+            {}
+          end
+
+        GlobalID::Locator.locate global_id, options
       end
 
       def custom_serialized?(hash)
