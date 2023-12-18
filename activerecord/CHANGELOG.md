@@ -1,3 +1,7 @@
+*   Fix `strict_loading` violations ignored when using `has_many` associations with query methods.
+
+    *Joshua Young*
+
 *   Add dirties option to uncached
 
     This adds a `dirties` option to `ActiveRecord::Base.uncached` and
