@@ -17,7 +17,7 @@ module ActionText
   #     attachment = ActionText::Attachment.from_attachable(attachable)
   #     attachment.to_html # => "<action-text-attachment sgid=\"BAh7CEk..."
   class Attachment
-    include Attachments::TrixConversion, Attachments::Minification, Attachments::Caching
+    include Attachments::TrixConversion, Attachments::Minification, Attachments::Caching, Attachments::Conversion
 
     mattr_accessor :tag_name, default: "action-text-attachment"
 
@@ -25,9 +25,7 @@ module ActionText
 
     class << self
       def fragment_by_canonicalizing_attachments(content)
-        ActionText.deprecator.silence do
-          fragment_by_minifying_attachments(fragment_by_converting_trix_attachments(content))
-        end
+        RichText.editors.fetch(:trix).fragment_by_canonicalizing_attachments(content)
       end
       deprecate :fragment_by_canonicalizing_attachments, deprecator: ActionText.deprecator
 

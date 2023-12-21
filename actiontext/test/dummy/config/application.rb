@@ -23,5 +23,21 @@ module Dummy
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    module ProsemirrorEditorExtensions
+      def to_editor_content_attachment_partial_path(editor_name)
+        case editor_name
+        when :prosemirror then "active_storage/blobs/attachable"
+        when :trix then nil
+        else super
+        end
+      end
+    end
+
+    initializer "prosemirror.editor" do
+      ActiveSupport.on_load :active_storage_blob do
+        prepend ProsemirrorEditorExtensions
+      end
+    end
   end
 end

@@ -1,0 +1,9 @@
+prosemirror:
+  attachments:
+    prefix: "action-text"
+    tag_name: "figure"
+
+trix:
+  attachments:
+    prefix: "trix"
+    tag_name: "figure"
