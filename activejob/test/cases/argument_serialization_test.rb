@@ -10,6 +10,7 @@ require "active_support/core_ext/integer/time"
 require "active_support/duration"
 require "jobs/kwargs_job"
 require "jobs/arguments_round_trip_job"
+require "jobs/association_loading_job"
 require "support/stubs/strong_parameters"
 
 class ArgumentSerializationTest < ActiveSupport::TestCase
@@ -89,6 +90,30 @@ class ArgumentSerializationTest < ActiveSupport::TestCase
 
       assert_raises ActiveJob::DeserializationError do
         ActiveJob::Arguments.deserialize [ arg ]
+      end
+    end
+  end
+
+  if ENV["AJ_INTEGRATION_TESTS"]
+    test "should locate records compatible with strict loading" do
+      with_strict_loading_by_default do
+        article = Article.create!(tags_attributes: [{ name: "a" }, { name: "b" }])
+
+        with_options_for_global_id includes: [:tags] do
+          assert_arguments_roundtrip [article, [:tags]], job_class: AssociationLoadingJob
+        end
+      end
+    end
+
+    test "should raise a strict loading error when locating records without configuration" do
+      with_strict_loading_by_default do
+        article = Article.create!(tags_attributes: [{ name: "a" }, { name: "b" }])
+
+        with_options_for_global_id includes: [] do
+          assert_raises ActiveRecord::StrictLoadingViolationError, match: "`Article` is marked for strict_loading" do
+            AssociationLoadingJob.perform_later(article, [:tags])
+          end
+        end
       end
     end
   end
@@ -266,13 +291,33 @@ class ArgumentSerializationTest < ActiveSupport::TestCase
       assert_arguments_roundtrip args
     end
 
-    def assert_arguments_roundtrip(args)
-      assert_equal args, perform_round_trip(args)
+    def assert_arguments_roundtrip(args, **options)
+      assert_equal args, perform_round_trip(args, **options)
     end
 
-    def perform_round_trip(args)
-      ArgumentsRoundTripJob.perform_later(*args) # Actually performed inline
+    def perform_round_trip(args, job_class: ArgumentsRoundTripJob)
+      job_class.perform_later(*args) # Actually performed inline
 
       JobBuffer.last_value
+    end
+
+    def with_strict_loading_by_default(value = true, model_class: ActiveRecord::Base)
+      strict_loading_by_default, model_class.strict_loading_by_default = model_class.strict_loading_by_default, value
+
+      yield
+    ensure
+      model_class.strict_loading_by_default = strict_loading_by_default
+    end
+
+    def with_options_for_global_id(job_class: AssociationLoadingJob, **options)
+      job_class.redefine_method :options_for_global_id do |model_class|
+        options
+      end
+
+      yield
+    ensure
+      job_class.redefine_method :options_for_global_id do |model_class|
+        {}
+      end
     end
 end

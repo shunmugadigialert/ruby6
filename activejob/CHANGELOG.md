@@ -1,3 +1,35 @@
+*   Define `ActiveJob::Base#options_for_global_id` to comply with strict loading
+
+    ```ruby
+    class Article < ApplicationRecord
+      self.strict_loading_by_default = true
+
+      has_and_belongs_to_many :tags
+    end
+
+    class Tag < ApplicationRecord
+      has_and_belongs_to_many :articles
+    end
+
+    class PublishJob < ApplicationJob
+      def perform(article)
+        article.tags.each { |tag| ... }
+      end
+
+      private
+
+      def options_for_global_id(model_class)
+        if model_class == Article
+          { includes: [:tags] }
+        else
+          super
+        end
+      end
+    end
+    ```
+
+    *Sean Doyle*
+
 *   Preserve the serialized timezone when deserializing `ActiveSupport::TimeWithZone` arguments.
 
     *Joshua Young*

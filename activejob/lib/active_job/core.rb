@@ -192,7 +192,13 @@ module ActiveJob
       end
 
       def deserialize_arguments(serialized_args)
-        Arguments.deserialize(serialized_args)
+        Arguments.deserialize(serialized_args) do |model_class|
+          options_for_global_id(model_class).to_h
+        end
+      end
+
+      def options_for_global_id(model_class)
+        {}
       end
 
       def arguments_serialized?
