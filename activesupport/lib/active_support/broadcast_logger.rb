@@ -81,14 +81,14 @@ module ActiveSupport
   # configured in such a way).
   # Tagging your logs can be done for the whole broadcast or for each sink independently.
   #
-  # Tagging logs for the whole broadcast
+  # Tagging logs for the whole broadcast:
   #
   #   broadcast = BroadcastLogger.new(stdout_logger, file_logger)
   #   broadcast.tagged("BMX") { broadcast.info("Hello world!") }
   #
   #   Outputs: "[BMX] Hello world!" is written on both STDOUT and in the file.
   #
-  # Tagging logs for a single logger
+  # Tagging logs for a single logger:
   #
   #   stdout_logger.extend(ActiveSupport::TaggedLogging)
   #   stdout_logger.push_tags("BMX")
@@ -98,7 +98,7 @@ module ActiveSupport
   #   Outputs: "[BMX] Hello world!" is written on STDOUT
   #   Outputs: "Hello world!"       is written in the file
   #
-  # Adding tags for the whole broadcast and adding extra tags on a specific logger
+  # Adding tags for the whole broadcast and adding extra tags on a specific logger:
   #
   #   stdout_logger.extend(ActiveSupport::TaggedLogging)
   #   stdout_logger.push_tags("BMX")
@@ -129,6 +129,10 @@ module ActiveSupport
     #   broadcast_logger = ActiveSupport::BroadcastLogger.new
     #   broadcast_logger.broadcast_to(Logger.new(STDOUT), Logger.new(STDERR))
     def broadcast_to(*loggers)
+      loggers.each do |logger|
+        logger.extend(LogProcessor) unless logger.is_a?(LogProcessor)
+      end
+
       @broadcasts.concat(loggers)
     end
 
@@ -271,7 +275,6 @@ module ActiveSupport
 
       def dispatch_with_processors(&block)
         @broadcasts.each do |logger|
-          logger.extend(LogProcessor) unless logger.is_a?(LogProcessor)
           logger.processors.unshift(processors)
 
           block.call(logger)
