@@ -1562,6 +1562,22 @@ end
 
 Similar to other callbacks in Rails, the `setup` and `teardown` methods can also be used by passing a block, lambda, or method name as a symbol to call.
 
+In addition to `setup` and `teardown`, tests that inherit from `ActiveSupport::TestCase` also support `around` callbacks that run between `setup` and `teardown`:
+
+```ruby
+require "test_helper"
+
+class HistoryTest < ActiveSupport::TestCase
+  around do |test_case, block|
+    travel_to(10.years.from_now, &block)
+  end
+
+  test "should show historical data" do
+    # ...
+  end
+end
+```
+
 ### Test Helpers
 
 To avoid code duplication, you can add your own test helpers.
