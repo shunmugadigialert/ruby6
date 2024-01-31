@@ -86,4 +86,8 @@
 
     *Rafael Mendonça França*
 
+*   Add `report-to` CSP response header field.
+
+    *Espen Antonsen*
+
 Please check [7-1-stable](https://github.com/rails/rails/blob/7-1-stable/actionpack/CHANGELOG.md) for previous changes.
