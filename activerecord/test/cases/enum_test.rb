@@ -487,6 +487,15 @@ class EnumTest < ActiveRecord::TestCase
     e = assert_raises(ArgumentError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "books"
+        enum status: { proposed: Object.new, active: :active }
+      end
+    end
+
+    assert_match(/must be only booleans, integers, symbols and strings\.$/, e.message)
+
+    e = assert_raises(ArgumentError) do
+      Class.new(ActiveRecord::Base) do
+        self.table_name = "books"
         enum status: ["active", ""]
       end
     end
