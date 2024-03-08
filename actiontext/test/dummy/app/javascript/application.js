@@ -1,6 +1,5 @@
 import "trix"
 import "@rails/actiontext"
-import "editors/prosemirror"
 
 addEventListener("click", ({ target }) => {
   if (target.matches(`[data-trix-action~="x-attach"]`)) {
