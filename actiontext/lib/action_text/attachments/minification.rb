@@ -4,6 +4,7 @@
 
 module ActionText
   module Attachments
+    # DEPRECATED
     module Minification
       extend ActiveSupport::Concern
 
@@ -13,6 +14,7 @@ module ActionText
             node.tap { |n| n.inner_html = "" }
           end
         end
+        deprecate :fragment_by_minifying_attachments, deprecator: ActionText.deprecator
       end
     end
   end

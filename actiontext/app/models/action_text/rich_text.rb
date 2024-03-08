@@ -83,7 +83,7 @@ module ActionText
     #     #   </figure>
     #     # </div>
     def to_trix_html
-      body&.to_trix_html
+      ActionText.deprecator.silence { body&.to_trix_html }
     end
 
     delegate :blank?, :empty?, :present?, to: :to_plain_text

@@ -25,8 +25,11 @@ module ActionText
 
     class << self
       def fragment_by_canonicalizing_attachments(content)
-        fragment_by_minifying_attachments(fragment_by_converting_trix_attachments(content))
+        ActionText.deprecator.silence do
+          fragment_by_minifying_attachments(fragment_by_converting_trix_attachments(content))
+        end
       end
+      deprecate :fragment_by_canonicalizing_attachments, deprecator: ActionText.deprecator
 
       def from_node(node, attachable = nil)
         new(node, attachable || ActionText::Attachable.from_node(node))

@@ -35,13 +35,14 @@ module ActionText
         fragment = ActionText::AttachmentGallery.fragment_by_canonicalizing_attachment_galleries(fragment)
         fragment
       end
+      deprecate :fragment_by_canonicalizing_content, deprecator: ActionText.deprecator
     end
 
     def initialize(content = nil, options = {})
       options.with_defaults! canonicalize: true
 
       if options[:canonicalize]
-        @fragment = self.class.fragment_by_canonicalizing_content(content)
+        @fragment = ActionText.deprecator.silence { self.class.fragment_by_canonicalizing_content(content) }
       else
         @fragment = ActionText::Fragment.wrap(content)
       end
@@ -128,8 +129,9 @@ module ActionText
     end
 
     def to_trix_html
-      render_attachments(&:to_trix_attachment).to_html
+      ActionText.deprecator.silence { render_attachments(&:to_trix_attachment).to_html }
     end
+    deprecate :to_trix_html, deprecator: ActionText.deprecator
 
     def to_html
       fragment.to_html

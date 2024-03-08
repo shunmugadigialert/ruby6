@@ -53,6 +53,7 @@ module ActionText
         def to_trix_content_attachment_partial_path
           nil
         end
+        deprecate :to_trix_content_attachment_partial_path, deprecator: ActionText.deprecator
       end
     end
 

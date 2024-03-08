@@ -113,6 +113,7 @@ module ActionText
     def to_trix_content_attachment_partial_path
       to_partial_path
     end
+    deprecate :to_trix_content_attachment_partial_path, deprecator: ActionText.deprecator
 
     # Returns the path to the partial that is used for rendering the attachable.
     # Defaults to `to_partial_path`.
