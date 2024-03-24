@@ -1,3 +1,9 @@
+*   Migrate `ActiveRecord::AttributeAssignment` support for multi-parameter attributes to Active Model
+
+    Implement assignment in terms of including `ActiveModel::AttributeAssignment`
+
+    *Sean Doyle*
+
 *   Add dirties option to uncached
 
     This adds a `dirties` option to `ActiveRecord::Base.uncached` and
@@ -17,6 +23,10 @@
 
     This deprecation is a soft deprecation, no warnings will be issued and there is no
     current plan to remove the method.
+
+    *Jean Boussier*
+
+*   Add `explain` support for `last`, `pluck` and `count`
 
     *Jean Boussier*
 
