@@ -1,3 +1,7 @@
+*   Fix duplicate `SELECT`, `INNER JOIN`, and `LEFT OUTER JOIN` statements when using `merge` with STI.
+
+    *Joshua Young*
+
 *   Add dirties option to uncached
 
     This adds a `dirties` option to `ActiveRecord::Base.uncached` and
