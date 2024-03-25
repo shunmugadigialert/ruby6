@@ -1,3 +1,7 @@
+*   Set the through record(s) for `has_one` and `has_many` associations on unpersisted records.
+
+    *Joshua Young*
+
 *   Add dirties option to uncached
 
     This adds a `dirties` option to `ActiveRecord::Base.uncached` and
