@@ -1,3 +1,25 @@
+*   Add predicate method to has_one accessors
+
+    Introduces `other!` to the list of generated methods for singular associations.
+
+    ```ruby
+    account.beneficiary
+    #=> nil
+
+    account.benificiary!
+    #=> #<ActiveRecord::RecordNotFound>
+
+    Benificiary.create!(account: account)
+    account.benificiary!
+    #=> #<Benificiary>
+
+    Benificiary.create!(account: account)
+    account.benificiary!
+    #=> #<ActiveRecord::SoleRecordExceeded>
+    ```
+
+    *Steve Polito*
+
 *   Retry known idempotent SELECT queries on connection-related exceptions
 
     SELECT queries we construct by walking the Arel tree and / or with known model attributes
