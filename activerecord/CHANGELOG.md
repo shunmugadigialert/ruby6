@@ -1,3 +1,18 @@
+*   Add `touch` option to `#update_columns` and `#update_column` methods. When
+    `touch` is set to `true`, the record `updated_at`/`updated_on` timestamp will be updated.
+
+    Example:
+
+    ```ruby
+    # Will update :updated_at/:updated_on alongside :nice column.
+    user.update_column(:nice, true, touch: true)
+
+    # Will update :updated_at/:updated_on alongside :last_ip column
+    user.update_columns(last_ip: request.remote_ip, touch: true)
+    ```
+
+    *Dmitrii Ivliev*
+
 *   Retry known idempotent SELECT queries on connection-related exceptions
 
     SELECT queries we construct by walking the Arel tree and / or with known model attributes
