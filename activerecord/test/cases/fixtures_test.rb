@@ -1737,7 +1737,15 @@ class MultipleFixtureConnectionsTest < ActiveRecord::TestCase
   end
 
   class CompositePkFixturesTest < ActiveRecord::TestCase
-    fixtures :cpk_orders, :cpk_books, :cpk_authors, :cpk_reviews, :cpk_order_agreements
+    fixtures :cpk_orders, :cpk_books, :cpk_posts, :cpk_tags, :cpk_authors, :cpk_reviews, :cpk_order_agreements
+
+    def test_supports_inline_habtm
+      assert(cpk_posts(:welcome).tags.include?(cpk_tags(:cpk_tag_ruby_on_rails)))
+      assert(cpk_posts(:welcome).tags.include?(cpk_tags(:cpk_tag_digital_product)))
+      assert_not(cpk_posts(:welcome).tags.include?(cpk_tags(:cpk_tag_loyal_customer)))
+
+      assert_equal(cpk_posts(:thinking).tags, [cpk_tags(:cpk_tag_digital_product)])
+    end
 
     def test_generates_composite_primary_key_for_partially_filled_fixtures
       alice = cpk_authors(:cpk_great_author)
