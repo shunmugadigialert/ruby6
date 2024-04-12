@@ -253,7 +253,7 @@ module Arel
 
         # maybe FIXME: decide when wrapper parens are needed
         _(node.to_sql).must_be_like %{
-          ( SELECT * FROM "users"  WHERE "users"."age" < 18 UNION SELECT * FROM "users"  WHERE "users"."age" > 99 )
+          ( (SELECT * FROM "users"  WHERE "users"."age" < 18) UNION (SELECT * FROM "users"  WHERE "users"."age" > 99) )
         }
       end
 
@@ -261,7 +261,7 @@ module Arel
         node = @m1.union :all, @m2
 
         _(node.to_sql).must_be_like %{
-          ( SELECT * FROM "users"  WHERE "users"."age" < 18 UNION ALL SELECT * FROM "users"  WHERE "users"."age" > 99 )
+          ( (SELECT * FROM "users"  WHERE "users"."age" < 18) UNION ALL (SELECT * FROM "users"  WHERE "users"."age" > 99) )
         }
       end
     end
@@ -354,9 +354,9 @@ module Arel
         sql = manager.to_sql
         _(sql).must_be_like %{
           WITH RECURSIVE "replies" AS (
-              SELECT "comments"."id", "comments"."parent_id" FROM "comments" WHERE "comments"."id" = 42
+              (SELECT "comments"."id", "comments"."parent_id" FROM "comments" WHERE "comments"."id" = 42)
             UNION
-              SELECT "comments"."id", "comments"."parent_id" FROM "comments" INNER JOIN "replies" ON "comments"."parent_id" = "replies"."id"
+              (SELECT "comments"."id", "comments"."parent_id" FROM "comments" INNER JOIN "replies" ON "comments"."parent_id" = "replies"."id")
           )
           SELECT * FROM "replies"
         }
@@ -964,15 +964,15 @@ module Arel
       end
 
       it "handles database-specific statements" do
-        old_visitor = Table.engine.connection.visitor
-        Table.engine.connection.visitor = Visitors::PostgreSQL.new Table.engine.connection
+        old_visitor = Table.engine.lease_connection.visitor
+        Table.engine.lease_connection.visitor = Visitors::PostgreSQL.new Table.engine.lease_connection
         table   = Table.new :users
         manager = Arel::SelectManager.new
         manager.from table
         manager.where table[:id].eq 10
         manager.where table[:name].matches "foo%"
         _(manager.where_sql).must_be_like %{ WHERE "users"."id" = 10 AND "users"."name" ILIKE 'foo%' }
-        Table.engine.connection.visitor = old_visitor
+        Table.engine.lease_connection.visitor = old_visitor
       end
 
       it "returns nil when there are no wheres" do

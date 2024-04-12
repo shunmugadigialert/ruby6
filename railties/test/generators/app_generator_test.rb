@@ -69,8 +69,8 @@ DEFAULT_APP_FILES = %w(
   lib/tasks/.keep
   log/.keep
   public/404.html
+  public/406-unsupported-browser.html
   public/422.html
-  public/426.html
   public/500.html
   public/icon.png
   public/icon.svg
@@ -534,6 +534,10 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_no_gem "selenium-webdriver"
 
     assert_no_directory("test")
+
+    assert_file ".github/workflows/ci.yml" do |file|
+      assert_no_match(/test:.\s*runs-on/m, file)
+    end
   end
 
   def test_generator_if_skip_jbuilder_is_given
@@ -1011,8 +1015,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
     ruby_version = "#{Gem::Version.new(Gem::VERSION) >= Gem::Version.new("3.3.13") ? Gem.ruby_version : RUBY_VERSION}"
 
     assert_file ".devcontainer/Dockerfile" do |content|
-      minor_ruby_version = ruby_version.match(/^\d+\.\d+/).to_s
-      assert_match(/ARG RUBY_VERSION=#{minor_ruby_version}$/, content)
+      assert_match(/ARG RUBY_VERSION=#{ruby_version}$/, content)
     end
     assert_file "Dockerfile" do |content|
       assert_match(/ARG RUBY_VERSION=#{ruby_version}/, content)
@@ -1320,6 +1323,9 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file("config/database.yml") do |content|
       assert_match(/host: <%= ENV\["DB_HOST"\] %>/, content)
     end
+    assert_file(".devcontainer/Dockerfile") do |content|
+      assert_match(/libpq-dev/, content)
+    end
   end
 
   def test_devonctainer_mysql
@@ -1347,6 +1353,9 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
     assert_file("config/database.yml") do |content|
       assert_match(/host: <%= ENV.fetch\("DB_HOST"\) \{ "localhost" } %>/, content)
+    end
+    assert_file(".devcontainer/Dockerfile") do |content|
+      assert_match(/default-libmysqlclient-dev/, content)
     end
   end
 
@@ -1403,6 +1412,18 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
     assert_compose_file do |compose_config|
       assert_not_includes compose_config["services"]["rails-app"].keys, "depends_on"
+    end
+  end
+
+  def test_devcontainer_dev_flag_mounts_local_rails_repo
+    run_generator_using_prerelease [ destination_root, "--dev" ]
+
+    assert_devcontainer_json_file do |devcontainer_config|
+      rails_mount = devcontainer_config["mounts"].sole
+
+      assert_equal "bind", rails_mount["type"]
+      assert_equal Rails::Generators::RAILS_DEV_PATH, rails_mount["source"]
+      assert_equal Rails::Generators::RAILS_DEV_PATH, rails_mount["target"]
     end
   end
 

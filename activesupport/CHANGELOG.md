@@ -1,7 +1,23 @@
-*   Add filename support for `Logger.logger_outputs_to?`
+*   `stub_const` now accepts a `exists: false` parameter to allow stubbing missing constants.
+
+    *Jean Boussier*
+
+*   Make ActiveSupport::BacktraceCleaner copy filters and silencers on dup and clone
+
+    Previously the copy would still share the internal silencers and filters array,
+    causing state to leak.
+
+    *Jean Boussier*
+
+*   Updating Astana with Western Kazakhstan TZInfo identifier
+
+    *Damian Nelson*
+
+*   Add filename support for `ActiveSupport::Logger.logger_outputs_to?`
 
     ```ruby
-    Logger.logger_outputs_to?('/var/log/rails.log')
+    logger = Logger.new('/var/log/rails.log')
+    ActiveSupport::Logger.logger_outputs_to?(logger, '/var/log/rails.log')
     ```
 
     *Christian Schmidt*

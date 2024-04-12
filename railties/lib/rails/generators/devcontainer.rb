@@ -4,10 +4,6 @@ module Rails
   module Generators
     module Devcontainer
       private
-        def devcontainer_ruby_version
-          gem_ruby_version.to_s.match(/^\d+\.\d+/).to_s
-        end
-
         def devcontainer_dependencies
           return @devcontainer_dependencies if @devcontainer_dependencies
 
@@ -43,6 +39,16 @@ module Rails
           @devcontainer_volumes
         end
 
+        def devcontainer_mounts
+          return @devcontainer_mounts if @devcontainer_mounts
+
+          @devcontainer_mounts = []
+
+          @devcontainer_mounts << local_rails_mount if options.dev?
+
+          @devcontainer_mounts
+        end
+
         def devcontainer_needs_redis?
           !(options.skip_action_cable? && options.skip_active_job?)
         end
@@ -60,6 +66,13 @@ module Rails
           when "mysql"          then "mysql-data"
           when "trilogy"        then "mariadb-data"
           when "postgresql"     then "postgres-data"
+          end
+        end
+
+        def db_package_for_dockerfile(database = options[:database])
+          case database
+          when "mysql"          then "default-libmysqlclient-dev"
+          when "postgresql"     then "libpq-dev"
           end
         end
 
@@ -123,6 +136,14 @@ module Rails
 
         def db_service_names
           ["mysql", "mariadb", "postgres"]
+        end
+
+        def local_rails_mount
+          {
+            type: "bind",
+            source: Rails::Generators::RAILS_DEV_PATH,
+            target: Rails::Generators::RAILS_DEV_PATH
+          }
         end
     end
   end
