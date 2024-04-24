@@ -1,3 +1,7 @@
+*   Support css background-image attributes with cid: on mail preview
+
+    *Alexey Vasiliev*
+
 *   Remove deprecated params via `:args` for `assert_enqueued_email_with`.
 
     *Rafael Mendonça França*
