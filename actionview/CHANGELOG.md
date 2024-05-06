@@ -1,3 +1,7 @@
+*   Respect `html_options[:form]` when `collection_checkboxes` generates the hidden `<input>`
+
+    *Riccardo Odone*
+
 *   Enable DependencyTracker to evaluate renders with trailing interpolation.
 
     ```erb
