@@ -6,8 +6,8 @@ module ActionMailer
   # = Action Mailer \InlinePreviewInterceptor
   #
   # Implements a mailer preview interceptor that converts image tag src attributes
-  # that use inline cid: style URLs to data: style URLs so that they are visible
-  # when previewing an HTML email in a web browser.
+  # or css attributes that use inline cid: style URLs to data: style URLs
+  # so that they are visible when previewing an HTML email in a web browser.
   #
   # This interceptor is enabled by default. To disable it, delete it from the
   # <tt>ActionMailer::Base.preview_interceptors</tt> array:
@@ -15,7 +15,7 @@ module ActionMailer
   #   ActionMailer::Base.preview_interceptors.delete(ActionMailer::InlinePreviewInterceptor)
   #
   class InlinePreviewInterceptor
-    PATTERN = /src=(?:"cid:[^"]+"|'cid:[^']+')/i
+    PATTERN = /src=(?:"cid:[^"]+"|'cid:[^']+')|url\((?:"cid:[^"]+"|'cid:[^']+'|cid:[^)]+)\)/i
 
     include Base64
 
@@ -31,8 +31,8 @@ module ActionMailer
       return message if html_part.blank?
 
       html_part.body = html_part.decoded.gsub(PATTERN) do |match|
-        if part = find_part(match[9..-2])
-          %[src="#{data_url(part)}"]
+        if part = find_part(match.match(/cid:([^"')]+)/i)[1])
+          match.start_with?("src=") ? %[src="#{data_url(part)}"] : %[url(#{data_url(part)})]
         else
           match
         end
