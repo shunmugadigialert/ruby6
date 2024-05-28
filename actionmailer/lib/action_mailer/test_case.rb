@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/object/with"
 require "active_support/test_case"
 require "rails-dom-testing"
 
@@ -34,14 +35,13 @@ module ActionMailer
 
       include ActiveSupport::Testing::ConstantLookup
       include TestHelper
-      include Rails::Dom::Testing::Assertions::SelectorAssertions
-      include Rails::Dom::Testing::Assertions::DomAssertions
 
       included do
         class_attribute :_mailer_class
         setup :initialize_test_deliveries
         setup :set_expected_mail
         teardown :restore_test_deliveries
+        attr_accessor :html_document
         ActiveSupport.run_load_hooks(:action_mailer_test_case, self)
       end
 
@@ -83,6 +83,77 @@ module ActionMailer
         IO.readlines(File.join(Rails.root, "test", "fixtures", self.class.mailer_class.name.underscore, action))
       end
 
+      # Extract and parse the part of a Mail instance with a matching MIME type and yield it to the block.
+      #
+      # If the Mail is multipart, extract and parse the matching part.
+      # Otherwise, extract the body. By default, assert against the last delivered Mail.
+      #
+      #   UsersMailer.create(user).deliver_now
+      #   assert_part :text do |part|
+      #     assert_includes part.body.raw_source, "Welcome, #{user.email}"
+      #   end
+      #   assert_part :html do |part|
+      #     assert_includes part.body.raw_source, "<h1>Welcome, #{user.email}</h1>"
+      #   end
+      #
+      #   mail = UsersMailer.create(user)
+      #   assert_part mail, :text do |part|
+      #     assert_includes part.body.raw_source, "Welcome, #{user.email}"
+      #   end
+      #   assert_part mail, :html do |part|
+      #     assert_includes part.body.raw_source, "<h1>Welcome, #{user.email}</h1>"
+      #   end
+      def assert_part(mail = last_delivered_mail!, type)
+        mime_type = Mime[type]
+        part = [*mail.parts, mail].find { |part| mime_type.match?(part.mime_type) }
+
+        flunk "expected part matching #{mime_type} in #{mail.inspect}" if part.nil?
+
+        yield part if block_given?
+      end
+
+      # Extract and parse the text part of a Mail instance and yield it to the block.
+      #
+      # If the Mail is multipart, extract and parse the +text/plain+ part.
+      # Otherwise, extract the body. By default, assert against the last delivered Mail.
+      #
+      #   UsersMailer.create(user).deliver_now
+      #   assert_text_part do |text|
+      #     assert_includes text, "Welcome, #{user.email}"
+      #   end
+      #
+      #   mail = UsersMailer.create(user)
+      #   assert_text_part mail do |text|
+      #     assert_includes text, "Welcome, #{user.email}"
+      #   end
+      def assert_text_part(mail = last_delivered_mail!)
+        assert_part(mail, :text) { |part| yield part.body.raw_source if block_given? }
+      end
+
+      # Extract and parse the HTML part of a Mail instance and yield it to the block.
+      #
+      # If the Mail is multipart, extract and parse the +text/html+ part.
+      # Otherwise, extract and parse the body. By default, assert against the last delivered Mail.
+      #
+      #   UsersMailer.create(user).deliver_now
+      #   assert_html_part do |root|
+      #     assert_select root, "h1", text: "Welcome, #{user.email}"
+      #   end
+      #
+      #   mail = UsersMailer.create(user)
+      #   assert_html_part mail do |root|
+      #     assert_select root, "h1", text: "Welcome, #{user.email}"
+      #   end
+      def assert_html_part(mail = last_delivered_mail!, html_version: nil)
+        parser = Rails::Dom::Testing.html_document_fragment(html_version: html_version)
+
+        assert_part(mail, :html) do |part|
+          with html_document: parser.parse(part.body.raw_source) do
+            yield html_document if block_given?
+          end
+        end
+      end
+
       private
         def initialize_test_deliveries
           set_delivery_method :test
@@ -118,6 +189,16 @@ module ActionMailer
 
         def encode(subject)
           Mail::Encodings.q_value_encode(subject, charset)
+        end
+
+        def last_delivered_mail
+          self.class.mailer_class.deliveries.last
+        end
+
+        def last_delivered_mail!
+          last_delivered_mail.tap do |mail|
+            assert_not_nil mail, "No e-mail in delivery list"
+          end
         end
     end
 
