@@ -89,6 +89,8 @@ jobs:
           <%- elsif options[:database] == "postgresql" -%>
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
           <%- end -%>
+          # If you are using credentials in a test environment, set the value of `config/credentials/test.key`
+          # RAILS_MASTER_KEY: ${{ secrets.RAILS_TEST_KEY }}
           # REDIS_URL: redis://localhost:6379/0
         run: bin/rails <%= test_command %>
 

@@ -1,3 +1,7 @@
+*   Introduce `RAILS_MASTER_KEY` placeholder in generated ci.yml files
+
+    *Steve Polito*
+
 *   Add internal page `/rails/info/notes`, that displays the same information as `bin/rails notes`.
 
     *Deepak Mahakale*
