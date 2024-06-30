@@ -231,27 +231,26 @@ class HashWithIndifferentAccessTest < ActiveSupport::TestCase
     hash[:a] = "a"
     hash["b"] = "b"
 
-    updated_with_strings = hash.update(@strings)
-    updated_with_symbols = hash.update(@symbols)
-    updated_with_mixed = hash.update(@mixed)
+    assert_equal(hash.object_id, hash.update(@strings).object_id)
 
-    assert_equal 1, updated_with_strings[:a]
-    assert_equal 1, updated_with_strings["a"]
-    assert_equal 2, updated_with_strings["b"]
+    hash.update(@symbols)
+    hash.update(@mixed)
+    hash.update(@mixed.with_indifferent_access)
 
-    assert_equal 1, updated_with_symbols[:a]
-    assert_equal 2, updated_with_symbols["b"]
-    assert_equal 2, updated_with_symbols[:b]
+    assert_equal(["a", "b"], hash.keys)
 
-    assert_equal 1, updated_with_mixed[:a]
-    assert_equal 2, updated_with_mixed["b"]
-
-    assert [updated_with_strings, updated_with_symbols, updated_with_mixed].all? { |h| h.keys.size == 2 }
+    assert_equal 1, hash[:a]
+    assert_equal 1, hash["a"]
+    assert_equal 2, hash[:b]
+    assert_equal 2, hash["b"]
   end
 
   def test_update_with_multiple_arguments
     hash = HashWithIndifferentAccess.new
-    hash.update({ "a" => 1 }, { "b" => 2 })
+    hash.update(
+      { "a" => 1 }.with_indifferent_access,
+      { "b" => 2 }
+    )
 
     assert_equal 1, hash["a"]
     assert_equal 2, hash["b"]
