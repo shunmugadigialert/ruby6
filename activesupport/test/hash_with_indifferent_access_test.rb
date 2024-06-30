@@ -580,6 +580,13 @@ class HashWithIndifferentAccessTest < ActiveSupport::TestCase
     assert_equal @strings, roundtrip
     assert_equal "1234", roundtrip.default
 
+    # Should preserve the default proc
+    mixed_with_default = @mixed.dup
+    _proc = ->(h, k) { 1 }
+    mixed_with_default.default_proc = _proc
+    roundtrip = mixed_with_default.with_indifferent_access.to_hash
+    assert_equal _proc, roundtrip.default_proc
+
     # Ensure nested hashes are not HashWithIndifferentAccess
     new_to_hash = @nested_mixed.with_indifferent_access.to_hash
     assert_not new_to_hash.instance_of?(HashWithIndifferentAccess)
