@@ -245,6 +245,17 @@ class HashWithIndifferentAccessTest < ActiveSupport::TestCase
     assert_equal 2, hash["b"]
   end
 
+  def test_update_with_block
+    h1 = { "a" => 1, "b" => "x" }.with_indifferent_access
+    h2 = { a: 2, b: "y" }
+
+    merged_hash = h1.update(h2) { |k, v1, v2| [k, v1, v2].join }
+
+    assert_equal(["a", "b"], merged_hash.keys)
+    assert_equal("a12", merged_hash[:a])
+    assert_equal("bxy", merged_hash[:b])
+  end
+
   def test_update_with_multiple_arguments
     hash = HashWithIndifferentAccess.new
     hash.update(
