@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "abstract_unit"
-require "byebug"
 
 class ContentSecurityPolicyTest < ActiveSupport::TestCase
   def setup
