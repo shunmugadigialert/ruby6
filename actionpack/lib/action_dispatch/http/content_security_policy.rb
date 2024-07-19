@@ -136,49 +136,49 @@ module ActionDispatch # :nodoc:
     end
 
     MAPPINGS = {
-      self: "'self'",
-      unsafe_eval: "'unsafe-eval'",
+      self:             "'self'",
+      unsafe_eval:      "'unsafe-eval'",
       wasm_unsafe_eval: "'wasm-unsafe-eval'",
-      unsafe_hashes: "'unsafe-hashes'",
-      unsafe_inline: "'unsafe-inline'",
-      none: "'none'",
-      http: "http:",
-      https: "https:",
-      data: "data:",
-      mediastream: "mediastream:",
+      unsafe_hashes:    "'unsafe-hashes'",
+      unsafe_inline:    "'unsafe-inline'",
+      none:             "'none'",
+      http:             "http:",
+      https:            "https:",
+      data:             "data:",
+      mediastream:      "mediastream:",
       allow_duplicates: "'allow-duplicates'",
-      blob: "blob:",
-      filesystem: "filesystem:",
-      report_sample: "'report-sample'",
-      script: "'script'",
-      strict_dynamic: "'strict-dynamic'",
-      ws: "ws:",
-      wss: "wss:"
+      blob:             "blob:",
+      filesystem:       "filesystem:",
+      report_sample:    "'report-sample'",
+      script:           "'script'",
+      strict_dynamic:   "'strict-dynamic'",
+      ws:               "ws:",
+      wss:              "wss:"
     }.freeze
 
     DIRECTIVES = {
-      base_uri: "base-uri",
-      child_src: "child-src",
-      connect_src: "connect-src",
-      default_src: "default-src",
-      font_src: "font-src",
-      form_action: "form-action",
-      frame_ancestors: "frame-ancestors",
-      frame_src: "frame-src",
-      img_src: "img-src",
-      manifest_src: "manifest-src",
-      media_src: "media-src",
-      object_src: "object-src",
-      prefetch_src: "prefetch-src",
-      require_trusted_types_for: "require-trusted-types-for",
-      script_src: "script-src",
-      script_src_attr: "script-src-attr",
-      script_src_elem: "script-src-elem",
-      style_src: "style-src",
-      style_src_attr: "style-src-attr",
-      style_src_elem: "style-src-elem",
-      trusted_types: "trusted-types",
-      worker_src: "worker-src"
+      base_uri:                   "base-uri",
+      child_src:                  "child-src",
+      connect_src:                "connect-src",
+      default_src:                "default-src",
+      font_src:                   "font-src",
+      form_action:                "form-action",
+      frame_ancestors:            "frame-ancestors",
+      frame_src:                  "frame-src",
+      img_src:                    "img-src",
+      manifest_src:               "manifest-src",
+      media_src:                  "media-src",
+      object_src:                 "object-src",
+      prefetch_src:               "prefetch-src",
+      require_trusted_types_for:  "require-trusted-types-for",
+      script_src:                 "script-src",
+      script_src_attr:            "script-src-attr",
+      script_src_elem:            "script-src-elem",
+      style_src:                  "style-src",
+      style_src_attr:             "style-src-attr",
+      style_src_elem:             "style-src-elem",
+      trusted_types:              "trusted-types",
+      worker_src:                 "worker-src"
     }.freeze
 
     DEFAULT_NONCE_DIRECTIVES = %w[script-src style-src].freeze
@@ -297,14 +297,14 @@ module ActionDispatch # :nodoc:
       @report_directives["reporting-endpoints"] = reporting_endpoints
     end
 
-    # Specify asset types for which {Subresource Integrity}[https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity]
-    # is required:
+    # Specify asset types for which [Subresource Integrity]
+    # (https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) is required:
     #
-    #   policy.require_sri_for :script, :style
+    #     policy.require_sri_for :script, :style
     #
     # Leave empty to not require Subresource Integrity:
     #
-    #   policy.require_sri_for
+    #     policy.require_sri_for
     #
     def require_sri_for(*types)
       if types.first
@@ -314,18 +314,19 @@ module ActionDispatch # :nodoc:
       end
     end
 
-    # Specify whether a {sandbox}[https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/sandbox]
+    # Specify whether a [sandbox]
+    # (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/sandbox)
     # should be enabled for the requested resource:
     #
-    #   policy.sandbox
+    #     policy.sandbox
     #
     # Values can be passed as arguments:
     #
-    #   policy.sandbox "allow-scripts", "allow-modals"
+    #     policy.sandbox "allow-scripts", "allow-modals"
     #
-    # Pass +false+ to disable the sandbox:
+    # Pass `false` to disable the sandbox:
     #
-    #   policy.sandbox false
+    #     policy.sandbox false
     #
     def sandbox(*values)
       if values.empty?
@@ -339,11 +340,11 @@ module ActionDispatch # :nodoc:
 
     # Specify whether user agents should treat any assets over HTTP as HTTPS:
     #
-    #   policy.upgrade_insecure_requests
+    #     policy.upgrade_insecure_requests
     #
-    # Pass +false+ to disable it:
+    # Pass `false` to disable it:
     #
-    #   policy.upgrade_insecure_requests false
+    #     policy.upgrade_insecure_requests false
     #
     def upgrade_insecure_requests(enabled = true)
       if enabled
@@ -357,154 +358,6 @@ module ActionDispatch # :nodoc:
       nonce_directives = DEFAULT_NONCE_DIRECTIVES if nonce_directives.nil?
       build_directives(context, nonce, nonce_directives).compact.join("; ")
     end
-
-    private
-      def apply_mappings(sources)
-        sources.map do |source|
-          case source
-          when Symbol
-            apply_mapping(source)
-          when String, Proc
-            source
-          else
-            raise ArgumentError, "Invalid content security policy source: #{source.inspect}"
-          end
-        end
-      end
-
-      def apply_mapping(source)
-        MAPPINGS.fetch(source) do
-          raise ArgumentError, "Unknown content security policy source mapping: #{source.inspect}"
-        end
-      end
-
-      def build_directives(context, nonce, nonce_directives)
-        @directives.map do |directive, sources|
-          if sources.is_a?(Array)
-            if nonce && nonce_directive?(directive, nonce_directives)
-              "#{directive} #{build_directive(sources, context).join(' ')} 'nonce-#{nonce}'"
-            else
-              "#{directive} #{build_directive(sources, context).join(' ')}"
-            end
-          elsif sources
-            directive
-          else
-            nil
-          end
-        end
-      end
-
-      def build_directive(sources, context)
-        sources.map { |source| resolve_source(source, context) }
-      end
-
-      def resolve_source(source, context)
-        case source
-        when String
-          source
-        when Symbol
-          source.to_s
-        when Proc
-          if context.nil?
-            raise RuntimeError, "Missing context for the dynamic content security policy source: #{source.inspect}"
-          else
-            resolved = context.instance_exec(&source)
-            apply_mappings(Array.wrap(resolved))
-          end
-        else
-          raise RuntimeError, "Unexpected content security policy source: #{source.inspect}"
-        end
-      end
-
-      def nonce_directive?(directive, nonce_directives)
-        nonce_directives.include?(directive)
-      end
-
-      def build_report_directives(proc, report_to_endpoints, reporting_endpoints)
-        csp_report_endpoints = proc.call
-
-        unless csp_report_endpoints.is_a?(Hash)
-          raise ArgumentError, "Invalid CSP reporting endpoints from Proc: #{csp_report_endpoints.inspect}. Must return a Hash."
-        end
-
-        csp_report_endpoints.each do |key, endpoint|
-          case endpoint
-          when String
-            report_uri(endpoint)
-            reporting_endpoints << "#{key}=\"#{endpoint}\""
-          when Hash
-            urls = endpoint.delete(:urls) || []
-            endpoint[:group] = key
-            endpoint[:endpoints] = urls.filter_map { |url| { url: url } unless url.nil? }
-            report_to_endpoints << endpoint.to_json
-          else
-            raise ArgumentError, "Invalid CSP reporting endpoint type: #{endpoint.class}. Must be String or Hash."
-          end
-        end
-      end
-  end
-
-  # Specify asset types for which [Subresource Integrity]
-  # (https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) is required:
-  #
-  #     policy.require_sri_for :script, :style
-  #
-  # Leave empty to not require Subresource Integrity:
-  #
-  #     policy.require_sri_for
-  #
-  def require_sri_for(*types)
-    if types.first
-      @directives["require-sri-for"] = types
-    else
-      @directives.delete("require-sri-for")
-    end
-  end
-
-  # Specify whether a [sandbox]
-  # (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/sandbox)
-  # should be enabled for the requested resource:
-  #
-  #     policy.sandbox
-  #
-  # Values can be passed as arguments:
-  #
-  #     policy.sandbox "allow-scripts", "allow-modals"
-  #
-  # Pass `false` to disable the sandbox:
-  #
-  #     policy.sandbox false
-  #
-  def sandbox(*values)
-    if values.empty?
-      @directives["sandbox"] = true
-    elsif values.first
-      @directives["sandbox"] = values
-    else
-      @directives.delete("sandbox")
-    end
-  end
-
-  # Specify whether user agents should treat any assets over HTTP as HTTPS:
-  #
-  #     policy.upgrade_insecure_requests
-  #
-  # Pass `false` to disable it:
-  #
-  #     policy.upgrade_insecure_requests false
-  #
-  def upgrade_insecure_requests(enabled = true)
-    if enabled
-      @directives["upgrade-insecure-requests"] = true
-    else
-      @directives.delete("upgrade-insecure-requests")
-    end
-  end
-
-  def build(context = nil, nonce = nil, nonce_directives = nil)
-    nonce_directives = DEFAULT_NONCE_DIRECTIVES if nonce_directives.nil?
-    build_directives(context, nonce, nonce_directives).compact.join("; ")
-  end
 
   private
     def apply_mappings(sources)
@@ -567,4 +420,26 @@ module ActionDispatch # :nodoc:
     def nonce_directive?(directive, nonce_directives)
       nonce_directives.include?(directive)
     end
+
+    def build_report_directives(proc, report_to_endpoints, reporting_endpoints)
+      csp_report_endpoints = proc.call
+      unless csp_report_endpoints.is_a?(Hash)
+        raise ArgumentError, "Invalid CSP reporting endpoints from Proc: #{csp_report_endpoints.inspect}. Must return a Hash."
+      end
+      csp_report_endpoints.each do |key, endpoint|
+        case endpoint
+        when String
+          report_uri(endpoint)
+          reporting_endpoints << "#{key}=\"#{endpoint}\""
+        when Hash
+          urls = endpoint.delete(:urls) || []
+          endpoint[:group] = key
+          endpoint[:endpoints] = urls.filter_map { |url| { url: url } unless url.nil? }
+          report_to_endpoints << endpoint.to_json
+        else
+          raise ArgumentError, "Invalid CSP reporting endpoint type: #{endpoint.class}. Must be String or Hash."
+        end
+      end
+    end
+  end
 end
