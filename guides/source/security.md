@@ -1220,7 +1220,7 @@ INFO: _These headers are part of the **Experimental** [`ReportingAPI`][], and th
 
 The [`Report-To`][] and [`Reporting-Endpoints`][] headers are used to specify a group of endpoints, for which browsers should send reports related to certain types of issues or policy  violations like CSP Violations, Crash and Deprecation Reports
 
-When present, `report-to` overrides the directive `report-uri`. 
+When present, `report-to` overrides the directive `report-uri`.
 
 Though the `report-to` directive is intended to replace the deprecated `report-uri` directive, `report-to` isn’t supported in most browsers yet. So for compatibility with current browsers while also adding forward compatibility when browsers get `report-to` support, you can specify both `report-uri` and `report-to`.
 
@@ -1236,13 +1236,13 @@ Alternatively, use lambdas to define multiple endpoints that share the same conf
 
 ```ruby
 Rails.application.config.content_security_policy do |policy|
-  policy.report_to "default",  -> {{ 
+  policy.report_to "default",  -> { {
           default: {
             urls: ["/csp-violation-report-endpoint", "https://example.com/csp-violation-report"],
             max_age: 30.minutes,
             include_subdomains: true
           },
-          
+
           group_2: "https://example.com/hpkp-reports"
     }
   }
