@@ -1232,6 +1232,7 @@ Rails.application.config.content_security_policy do |policy|
   policy.report_to "/csp-violation-report-endpoint"
 end
 ```
+
 Alternatively, use lambdas to define multiple endpoints that share the same configuration under a single group name.
 
 ```ruby
