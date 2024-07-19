@@ -1,4 +1,5 @@
 *   Add ReportingAPI support through `report_to` for `content_security_policy`
+
     ```ruby
          policy.report_to "default",  -> {{
           default: {
