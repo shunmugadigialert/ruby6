@@ -201,6 +201,18 @@ class ContentSecurityPolicyTest < ActiveSupport::TestCase
     assert_match %r{report-uri /violations}, @policy.build
   end
 
+  def test_reporting_api_directives
+    @policy.report_to "/csp-violation-report-endpoint"
+    assert_match %r{report-to csp-violation-report-endpoint}, @policy.build
+
+    @policy.report_to "group_1", proc { { group_1: "/csp-violation-report-endpoint" } }
+    assert_match %r{report-to group_1; report-uri /csp-violation-report-endpoint}, @policy.build
+
+    assert_raises(ArgumentError) { @policy.report_to 123, "/csp-violation-report-endpoint" }
+    assert_raises(ArgumentError) { @policy.report_to proc { { group_1: "/csp-violation-report-endpoint" } } }
+    assert_raises(ArgumentError) { @policy.report_to("", "/endpoint") }
+  end
+
   def test_other_directives
     @policy.block_all_mixed_content
     assert_match %r{block-all-mixed-content}, @policy.build
@@ -309,7 +321,7 @@ class ContentSecurityPolicyMiddlewareTest < ActiveSupport::TestCase
   def setup
     @env = Rack::MockRequest.env_for("", {})
     @env["action_dispatch.content_security_policy"] = ActionDispatch::ContentSecurityPolicy.new do |p|
-      p.default_src -> { :self  }
+      p.default_src -> { :self }
     end
     @env["action_dispatch.content_security_policy_nonce_generator"] = proc { "iyhD0Yc0W+c=" }
     @env["action_dispatch.content_security_policy_report_only"] = false
@@ -366,8 +378,8 @@ class DefaultContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationT
   end
 
   POLICY = ActionDispatch::ContentSecurityPolicy.new do |p|
-    p.default_src -> { :self  }
-    p.script_src  -> { :https }
+    p.default_src -> { :self }
+    p.script_src -> { :https }
   end
 
   class PolicyConfigMiddleware
@@ -692,7 +704,7 @@ class NonceDirectiveContentSecurityPolicyIntegrationTest < ActionDispatch::Integ
   end
 
   POLICY = ActionDispatch::ContentSecurityPolicy.new do |p|
-    p.default_src -> { :self  }
+    p.default_src -> { :self }
     p.script_src -> { :https }
     p.style_src -> { :https }
   end
@@ -742,6 +754,7 @@ class HelpersContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationT
 
   class ApplicationController < ActionController::Base
     helper_method :sky_is_blue?
+
     def sky_is_blue?
       true
     end
@@ -767,7 +780,7 @@ class HelpersContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationT
   end
 
   POLICY = ActionDispatch::ContentSecurityPolicy.new do |p|
-    p.default_src -> { :self  }
+    p.default_src -> { :self }
     p.script_src -> { :https }
     p.style_src -> { :https }
   end
