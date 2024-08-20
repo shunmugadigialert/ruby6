@@ -1,3 +1,8 @@
+*   Fix incorrect callback execution order when `config.active_record.run_after_transaction_callbacks_in_order_defined = true`
+    and using `after_commit` and `after_rollback` callbacks with `prepend: true`.
+
+    *Joshua Young*
+
 *   Replace `SQLite3::Database#busy_timeout` with `#busy_handler_timeout=`.
 
     Provides a non-GVL-blocking, fair retry interval busy handler implementation.
