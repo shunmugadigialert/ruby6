@@ -240,7 +240,7 @@ module ActionDispatch # :nodoc:
       end
     end
 
-    # Enable the {report-uri}[https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/report-uri]
+    # Enable the [report-uri](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/report-uri)
     # directive. Violation reports will be sent to the
     # specified URI:
     #
@@ -250,9 +250,9 @@ module ActionDispatch # :nodoc:
       @directives["report-uri"] = [uri]
     end
 
-    # Send CSP Violation Reports with the {ReportingApi}[https://developer.mozilla.org/en-US/docs/Web/API/Reporting_API]
-    # through the {Report-To}[https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/report-to] and
-    # {Reporting-Endpoints}[https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Reporting-Endpoints] headers.
+    # Send CSP Violation Reports with the [ReportingApi](https://developer.mozilla.org/en-US/docs/Web/API/Reporting_API)
+    # through the [Report-To](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/report-to) and
+    # [Reporting-Endpoints](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Reporting-Endpoints) headers.
     # Violation reports will be sent to the specified URI:
     #   policy.report_to "/csp-violation-report-endpoint"
     #
