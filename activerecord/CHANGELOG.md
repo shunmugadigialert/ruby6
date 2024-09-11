@@ -1,3 +1,11 @@
+*   When a `belongs_to` association is destroyed by `dependent: :destroy`,
+    `destroyed_by_association` will now be set to the reflection, matching the
+    behaviour of `has_one` and `has_many` associations.
+
+    Fixes #52859
+
+    *Hans Christian Ang*
+
 *   Fix an issue where `.left_outer_joins` used with multiple associations that have
     the same child association but different parents does not join all parents.
 
