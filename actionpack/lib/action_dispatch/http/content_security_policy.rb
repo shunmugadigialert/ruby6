@@ -51,7 +51,7 @@ module ActionDispatch # :nodoc:
 
         request = ActionDispatch::Request.new env
 
-        if (policy = request.content_security_policy)
+        if policy = request.content_security_policy
           nonce = request.content_security_policy_nonce
           nonce_directives = request.content_security_policy_nonce_directives
           context = request.controller_instance || request
@@ -121,7 +121,7 @@ module ActionDispatch # :nodoc:
 
       def content_security_policy_nonce
         if content_security_policy_nonce_generator
-          if (nonce = get_header(NONCE))
+          if nonce = get_header(NONCE)
             nonce
           else
             set_header(NONCE, generate_content_security_policy_nonce)
@@ -359,87 +359,87 @@ module ActionDispatch # :nodoc:
       build_directives(context, nonce, nonce_directives).compact.join("; ")
     end
 
-  private
-    def apply_mappings(sources)
-      sources.map do |source|
-        case source
-        when Symbol
-          apply_mapping(source)
-        when String, Proc
-          source
-        else
-          raise ArgumentError, "Invalid content security policy source: #{source.inspect}"
-        end
-      end
-    end
-
-    def apply_mapping(source)
-      MAPPINGS.fetch(source) do
-        raise ArgumentError, "Unknown content security policy source mapping: #{source.inspect}"
-      end
-    end
-
-    def build_directives(context, nonce, nonce_directives)
-      @directives.map do |directive, sources|
-        if sources.is_a?(Array)
-          if nonce && nonce_directive?(directive, nonce_directives)
-            "#{directive} #{build_directive(sources, context).join(' ')} 'nonce-#{nonce}'"
+    private
+      def apply_mappings(sources)
+        sources.map do |source|
+          case source
+          when Symbol
+            apply_mapping(source)
+          when String, Proc
+            source
           else
-            "#{directive} #{build_directive(sources, context).join(' ')}"
+            raise ArgumentError, "Invalid content security policy source: #{source.inspect}"
           end
-        elsif sources
-          directive
-        else
-          nil
         end
       end
-    end
 
-    def build_directive(sources, context)
-      sources.map { |source| resolve_source(source, context) }
-    end
-
-    def resolve_source(source, context)
-      case source
-      when String
-        source
-      when Symbol
-        source.to_s
-      when Proc
-        if context.nil?
-          raise RuntimeError, "Missing context for the dynamic content security policy source: #{source.inspect}"
-        else
-          resolved = context.instance_exec(&source)
-          apply_mappings(Array.wrap(resolved))
+      def apply_mapping(source)
+        MAPPINGS.fetch(source) do
+          raise ArgumentError, "Unknown content security policy source mapping: #{source.inspect}"
         end
-      else
-        raise RuntimeError, "Unexpected content security policy source: #{source.inspect}"
       end
-    end
 
-    def nonce_directive?(directive, nonce_directives)
-      nonce_directives.include?(directive)
-    end
-
-    def build_report_directives(proc, report_to_endpoints, reporting_endpoints)
-      csp_report_endpoints = proc.call
-      unless csp_report_endpoints.is_a?(Hash)
-        raise ArgumentError, "Invalid CSP reporting endpoints from Proc: #{csp_report_endpoints.inspect}. Must return a Hash."
+      def build_directives(context, nonce, nonce_directives)
+        @directives.map do |directive, sources|
+          if sources.is_a?(Array)
+            if nonce && nonce_directive?(directive, nonce_directives)
+              "#{directive} #{build_directive(sources, context).join(' ')} 'nonce-#{nonce}'"
+            else
+              "#{directive} #{build_directive(sources, context).join(' ')}"
+            end
+          elsif sources
+            directive
+          else
+            nil
+          end
+        end
       end
-      csp_report_endpoints.each do |key, endpoint|
-        case endpoint
+
+      def build_directive(sources, context)
+        sources.map { |source| resolve_source(source, context) }
+      end
+
+      def resolve_source(source, context)
+        case source
         when String
-          report_uri(endpoint)
-          reporting_endpoints << "#{key}=\"#{endpoint}\""
-        when Hash
-          urls = endpoint.delete(:urls) || []
-          endpoint[:group] = key
-          endpoint[:endpoints] = urls.filter_map { |url| { url: url } unless url.nil? }
-          report_to_endpoints << endpoint.to_json
+          source
+        when Symbol
+          source.to_s
+        when Proc
+          if context.nil?
+            raise RuntimeError, "Missing context for the dynamic content security policy source: #{source.inspect}"
+          else
+            resolved = context.instance_exec(&source)
+            apply_mappings(Array.wrap(resolved))
+          end
         else
-          raise ArgumentError, "Invalid CSP reporting endpoint type: #{endpoint.class}. Must be String or Hash."
+          raise RuntimeError, "Unexpected content security policy source: #{source.inspect}"
         end
       end
-    end
+
+      def nonce_directive?(directive, nonce_directives)
+        nonce_directives.include?(directive)
+      end
+
+      def build_report_directives(proc, report_to_endpoints, reporting_endpoints)
+        csp_report_endpoints = proc.call
+        unless csp_report_endpoints.is_a?(Hash)
+          raise ArgumentError, "Invalid CSP reporting endpoints from Proc: #{csp_report_endpoints.inspect}. Must return a Hash."
+        end
+        csp_report_endpoints.each do |key, endpoint|
+          case endpoint
+          when String
+            report_uri(endpoint)
+            reporting_endpoints << "#{key}=\"#{endpoint}\""
+          when Hash
+            urls = endpoint.delete(:urls) || []
+            endpoint[:group] = key
+            endpoint[:endpoints] = urls.filter_map { |url| { url: url } unless url.nil? }
+            report_to_endpoints << endpoint.to_json
+          else
+            raise ArgumentError, "Invalid CSP reporting endpoint type: #{endpoint.class}. Must be String or Hash."
+          end
+        end
+      end
   end
 end

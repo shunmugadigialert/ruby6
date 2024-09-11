@@ -1218,7 +1218,7 @@ end
 
 INFO: _These headers are part of the **Experimental** [`ReportingAPI`][], and therefore not widely supported by some browsers_
 
-The [`Report-To`][] and [`Reporting-Endpoints`][] headers are used to specify a group of endpoints, for which browsers should send reports related to certain types of issues or policy  violations like CSP Violations, Crash and Deprecation Reports
+The [`Report-To`][] and [`Reporting-Endpoints`][] headers are used to specify a group of endpoints, for which browsers should send reports related to certain types of issues or policy violations like CSP Violations, Crash and Deprecation Reports.
 
 When present, `report-to` overrides the directive `report-uri`.
 
@@ -1251,9 +1251,6 @@ end
 ```
 
 INFO: _Reports are delivered  **[`out-of-band`][]** by the browser itself, rather than by your server or site, meaning the browser controls when reports are delivered to your server(s). With CSP level 2 (`report-uri`), reports are sent immediately. In contrast, with CSP level 3 (`report-to`), reports are sent at the browser’s discretion, potentially with delays of up to a minute. This approach allows reports to be batched rather than sent individually, which helps save bandwidth and is particularly considerate of users' network connections, especially on mobile devices._
-
-
-
 
 When migrating legacy content, you might want to report violations without
 enforcing the policy. Set the [`Content-Security-Policy-Report-Only`][]
