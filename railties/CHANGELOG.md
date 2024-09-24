@@ -1,3 +1,7 @@
+*   Colorize the Rails console prompt even on non standard environments.
+
+    *Lorenzo Zabot*
+
 *   Do not include redis by default in generated Dev Containers.
 
     Now that applications use the Solid Queue and Solid Cache gems by default, we do not need to include redis
