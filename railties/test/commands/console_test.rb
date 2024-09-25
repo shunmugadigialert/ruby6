@@ -63,6 +63,7 @@ class Rails::ConsoleTest < ActiveSupport::TestCase
     irb_console = Rails::Console.new(app).console
     red = "\e[31m"
     blue = "\e[34m"
+    magenta = "\e[35m"
     clear = "\e[0m"
 
     Rails.env = "development"
@@ -75,7 +76,7 @@ class Rails::ConsoleTest < ActiveSupport::TestCase
     assert_equal("#{red}prod#{clear}", irb_console.colorized_env)
 
     Rails.env = "custom_env"
-    assert_equal("custom_env", irb_console.colorized_env)
+    assert_equal("#{magenta}custom_env#{clear}", irb_console.colorized_env)
   end
 
   def test_default_environment_with_no_rails_env

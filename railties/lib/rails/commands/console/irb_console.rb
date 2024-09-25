@@ -128,7 +128,7 @@ module Rails
         when "production"
           IRB::Color.colorize("prod", [:RED])
         else
-          Rails.env
+          IRB::Color.colorize(Rails.env, [:MAGENTA])
         end
       end
     end
