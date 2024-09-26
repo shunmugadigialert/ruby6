@@ -1,3 +1,9 @@
+*   Add an `attributes` method to all form tags.
+
+    This allows generating input attributes without using the tags, so they can be used elsewhere
+
+    *Cirdes Henrique*
+
 *   Enable DependencyTracker to evaluate renders with trailing interpolation.
 
     ```erb
