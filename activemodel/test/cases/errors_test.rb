@@ -471,6 +471,7 @@ class ErrorsTest < ActiveModel::TestCase
 
   test "messages_for contains all the error messages for the given attribute and type" do
     person = Person.new
+    person.errors.add(:name, :invalid)
     person.errors.add(:name, :too_long, message: "is too long")
     assert_equal ["is too long"], person.errors.messages_for(:name, :too_long)
   end
@@ -512,6 +513,7 @@ class ErrorsTest < ActiveModel::TestCase
 
   test "full_messages_for contains all the error messages for the given attribute and type" do
     person = Person.new
+    person.errors.add(:name, :invalid)
     person.errors.add(:name, :too_long, message: "is too long")
     assert_equal ["name is too long"], person.errors.full_messages_for(:name, :too_long)
   end
