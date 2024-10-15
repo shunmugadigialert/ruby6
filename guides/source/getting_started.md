@@ -1763,12 +1763,12 @@ class Article < ApplicationRecord
   validates :title, presence: true
   validates :body, presence: true, length: { minimum: 10 }
 
-  VALID_STATUSES = ['public', 'private', 'archived']
+  VALID_STATUSES = [ 'public', 'private', 'archived' ]
 
   validates :status, inclusion: { in: VALID_STATUSES }
 
   def archived?
-    status == 'archived'
+    status == "archived"
   end
 end
 ```
@@ -1779,12 +1779,12 @@ and in the `Comment` model:
 class Comment < ApplicationRecord
   belongs_to :article
 
-  VALID_STATUSES = ['public', 'private', 'archived']
+  VALID_STATUSES = [ 'public', 'private', 'archived' ]
 
   validates :status, inclusion: { in: VALID_STATUSES }
 
   def archived?
-    status == 'archived'
+    status == "archived"
   end
 end
 ```
