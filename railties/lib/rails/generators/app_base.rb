@@ -541,7 +541,7 @@ module Rails
 
       def yarn_through_corepack?
         true if dockerfile_yarn_version == "latest"
-        dockerfile_yarn_version.to_s.split(".").first.to_i >= 2
+        dockerfile_yarn_version >= "2"
       end
 
       def dockerfile_bun_version
