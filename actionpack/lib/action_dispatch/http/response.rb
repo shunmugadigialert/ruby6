@@ -82,6 +82,7 @@ module ActionDispatch # :nodoc:
     end
 
     CONTENT_TYPE = "Content-Type"
+    RETRY_AFTER  = "Retry-After"
     SET_COOKIE   = "Set-Cookie"
     NO_CONTENT_CODES = [100, 101, 102, 103, 204, 205, 304]
 
@@ -344,6 +345,14 @@ module ActionDispatch # :nodoc:
           @stream = build_buffer self, munge_body_object(body)
         end
       end
+    end
+
+    def retry_after=(value)
+      set_header RETRY_AFTER, value&.httpdate
+    end
+
+    def retry_after
+      get_header RETRY_AFTER
     end
 
     # Avoid having to pass an open file handle as the response body. Rack::Sendfile
