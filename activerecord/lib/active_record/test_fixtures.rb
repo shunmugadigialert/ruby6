@@ -49,7 +49,7 @@ module ActiveRecord
       # `use_transactional_tests`.
       def set_database_transactions(name, enabled)
         if enabled.nil?
-          self.database_transactions_config.delete(name)
+          self.database_transactions_config = self.database_transactions_config.except(name)
         else
           self.database_transactions_config = database_transactions_config.merge(name => enabled)
         end
