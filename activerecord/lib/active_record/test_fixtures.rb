@@ -184,25 +184,18 @@ module ActiveRecord
         @@already_loaded_fixtures.clear
       end
 
+      def transactional_tests_for_pool?(pool)
+        database_transactions_config.fetch(pool.db_config.name.to_sym, use_transactional_tests)
+      end
+
       def setup_transactional_fixtures
         setup_shared_connection_pool
 
         # Begin transactions for connections already established
         @fixture_connection_pools = ActiveRecord::Base.connection_handler.connection_pool_list(:writing)
 
-        transaction_disabled_dbnames = database_transactions_config.select { |_, enabled| !enabled }.keys
-        transaction_enabled_dbnames = database_transactions_config.select { |_, enabled| enabled }.keys
-
-        # Remove any pools that we don't want to use with transactions
-        @fixture_connection_pools.reject! { |pool|
-          if use_transactional_tests
-            # If the default is to use transactions, remove pools that are explicitly DISabled
-            transaction_disabled_dbnames.include?(pool.db_config.name.to_sym)
-          else
-            # Otherwise the default is NOT to use transactions, so remove any pools that are NOT explicitly ENabled
-            !transaction_enabled_dbnames.include?(pool.db_config.name.to_sym)
-          end
-        }
+        # Filter to pools that want to use transactions
+        @fixture_connection_pools.select! { |pool| transactional_tests_for_pool?(pool) }
 
         @fixture_connection_pools.each do |pool|
           pool.pin_connection!(lock_threads)
@@ -219,12 +212,8 @@ module ActiveRecord
             if pool
               setup_shared_connection_pool
 
-              # Don't begin a transaction if we've already done so, or are not
-              # using transactions for this database
-              @disable_transactions =
-                (use_transactional_tests && transaction_disabled_dbnames.include?(pool.db_config.name.to_sym)) ||
-                (!use_transactional_tests && !transaction_enabled_dbnames.include?(pool.db_config.name.to_sym))
-              unless @fixture_connection_pools.include?(pool) || @disable_transactions
+              # Don't begin a transaction if we've already done so, or are not using them for this pool
+              if !@fixture_connection_pools.include?(pool) && transactional_tests_for_pool?(pool)
                 pool.pin_connection!(lock_threads)
                 pool.lease_connection
                 @fixture_connection_pools << pool
