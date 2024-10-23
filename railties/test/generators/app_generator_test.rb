@@ -695,6 +695,24 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  def test_gitignore_skips_storage_directory_if_active_storage_is_skipped_and_database_is_sqlite
+    generator [destination_root], ["--skip-active-storage"]
+    run_generator_instance
+
+    assert_file ".gitignore" do |content|
+      assert_match(%r{storage/}, content)
+    end
+  end
+
+  def test_gitignore_skips_storage_directory_if_active_storage_is_skipped_and_database_is_not_sqlite
+    generator [destination_root], ["--skip-active-storage", "--database=postgresql"]
+    run_generator_instance
+
+    assert_file ".gitignore" do |content|
+      assert_no_match(%r{storage/}, content)
+    end
+  end
+
   def test_usage_read_from_file
     assert_called(File, :read, returns: "USAGE FROM FILE") do
       assert_equal "USAGE FROM FILE", Rails::Generators::AppGenerator.desc
