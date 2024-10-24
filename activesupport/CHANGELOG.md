@@ -1,3 +1,7 @@
+*   Add `ActiveSupport::Testing::NotificationAssertions` module to help with testing `ActiveSupport::Notifications`.
+
+    *Nicholas La Roux*, *Yishu See*, *Sean Doyle*
+
 *   `ActiveSupport::JSON.encode` supports CIDR notation.
 
     Previously:
